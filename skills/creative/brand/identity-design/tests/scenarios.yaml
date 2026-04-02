@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/brand/identity-design
+  trigger: /brand-identity-design
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: brand-identity-design-smoke
+  description: Invoking brand-identity-design produces a seven-section design spec
+    grounded in brand-guide.md tokens.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /brand-identity-design testimonial section for retreat landing page
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/brand-identity-design-spec.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/brand-identity-design-spec.md
+    sections:
+    - Context
+    - Color
+    - Typography
+    - WCAG
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: brand-identity-design-contrast-check
+  description: Design spec flags WCAG contrast violations for any proposed color pair.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /brand-identity-design footer with low-contrast text
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/brand-identity-design-spec.md
+    sections:
+    - Contrast
+  - type: no_span_errors

@@ -1,0 +1,52 @@
+version: "1.0"
+
+handoff:
+  from: agents-marketing-webinar
+  to: agents-marketing-copywriter
+  mechanism: sessions_spawn
+
+caller_provides:
+  required_context:
+    - name: big_domino
+      description: "The single belief the webinar must establish."
+    - name: voice_archetype
+      description: "Science Translator by default unless Austin approved another register."
+    - name: approval_gate
+      description: "Outline approval must be complete before Quill starts slide copy."
+  required_artifacts:
+    - path_pattern: memory/drafts/webinars/{{today}}-*-brief.md
+      description: "Discovery brief with audience, offer, and logistics."
+    - path_pattern: memory/drafts/webinars/{{today}}-*-outline.md
+      description: "Approved webinar outline ready for slide copy."
+
+callee_produces:
+  required_artifacts:
+    - path_pattern: memory/drafts/webinars/{{today}}-*-copy.md
+      description: "Slide copy with headlines, body copy, and speaker notes."
+      required_sections:
+        - Slide 1
+        - speaker note
+  state_updates:
+    - description: "Quill applies Chain of Draft to the slide deck copy."
+    - description: "Quill starts only after Austin has explicitly approved the outline."
+  prohibited_actions:
+    - tool: resend.send
+      reason: "Quill drafts copy only."
+    - tool: vercel.deploy
+      reason: "Copy generation must not publish the webinar."
+
+assertions:
+  pre_delegation:
+    - type: delegation_occurred
+      from_agent: agents-marketing-webinar
+      to_agent: agents-marketing-copywriter
+      log_path: /tmp/openclaw/openclaw-{{today}}.log
+      run_id: "{{run_id}}"
+  post_delegation:
+    - type: artifact_exists
+      path: memory/drafts/webinars/{{today}}-*-copy.md
+    - type: artifact_contains
+      path: memory/drafts/webinars/{{today}}-*-copy.md
+      sections:
+        - Slide 1
+        - speaker note

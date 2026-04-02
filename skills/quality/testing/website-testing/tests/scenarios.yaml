@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/testing/website-testing
+  trigger: /website-testing
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: website-testing-smoke
+  description: Website testing produces a four-category audit report.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /website-testing example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/website-testing-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/website-testing-report.md
+    sections:
+    - Accessibility
+    - Performance
+    - Brand
+    - SEO
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: website-testing-no-site
+  description: No site context prompts for site selection.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /website-testing example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/website-testing-report.md
+    sections:
+    - site
+  - type: no_span_errors

@@ -1,0 +1,59 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/backend/sanity-preview-routes
+  trigger: /sanity-preview-routes
+defaults:
+  timeout: 60
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: smoke-basic
+  description: Smoke coverage for engineering/backend/sanity-preview-routes
+  tags:
+  - smoke
+  - boundary-skill
+  given:
+  - type: file_absent
+    path: memory/drafts/engineering-backend-sanity-preview-routes-artifact.md
+  when:
+    invoke: /sanity-preview-routes
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/engineering-backend-sanity-preview-routes-artifact.md
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - client.fetch
+    - fetch.ts
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-out-of-scope
+  description: Negative coverage for unsupported behavior
+  tags:
+  - negative
+  - boundary-skill
+  when:
+    invoke: /sanity-preview-routes do something forbidden
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: send_message
+  - &id001
+    type: no_span_errors
+- name: permission-guardrails
+  description: Permission boundaries remain intact
+  tags:
+  - permission
+  when:
+    invoke: /sanity-preview-routes
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: external_write
+  - *id001

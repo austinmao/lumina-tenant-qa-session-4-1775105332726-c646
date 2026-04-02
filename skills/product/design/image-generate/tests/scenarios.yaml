@@ -1,0 +1,60 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/product/design/image-generate
+  trigger: /image-generate
+defaults:
+  timeout: 60
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: smoke-basic
+  description: Smoke coverage for product/design/image-generate
+  tags:
+  - smoke
+  - boundary-skill
+  given:
+  - type: file_absent
+    path: memory/drafts/product-design-image-generate-artifact.md
+  when:
+    invoke: /image-generate
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/product-design-image-generate-artifact.md
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - typography.primary_font
+    mode: contains
+  - type: model_used
+    expected: gpt-image-1
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-out-of-scope
+  description: Negative coverage for unsupported behavior
+  tags:
+  - negative
+  - boundary-skill
+  when:
+    invoke: /image-generate do something forbidden
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: send_message
+  - &id001
+    type: no_span_errors
+- name: permission-guardrails
+  description: Permission boundaries remain intact
+  tags:
+  - permission
+  when:
+    invoke: /image-generate
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: external_write
+  - *id001

@@ -1,0 +1,104 @@
+# ClawSpec Contract: keap-crm skill invocation via invoke.py
+# Validates input/output schemas and basic assertions for the Keap MCP wrapper.
+
+contract:
+  name: keap-crm-invoke
+  version: "1.0.0"
+  description: "Contract for scripts/keap/invoke.py — the Python wrapper around the Keap MCP server"
+  skill: keap-crm
+
+schemas:
+  input:
+    type: object
+    required: [tool_name]
+    properties:
+      tool_name:
+        type: string
+        minLength: 1
+        description: "Name of the Keap MCP tool to invoke (e.g., keap_search_contacts)"
+      args:
+        type: object
+        description: "JSON arguments passed to the tool; schema varies per tool"
+        default: {}
+
+  output_success:
+    type: object
+    required: [result]
+    properties:
+      result:
+        type: object
+        required: [content]
+        properties:
+          content:
+            type: array
+            minItems: 1
+            items:
+              type: object
+              required: [type, text]
+              properties:
+                type:
+                  type: string
+                  enum: [text]
+                text:
+                  type: string
+
+  output_list_tools:
+    type: object
+    required: [tools]
+    properties:
+      tools:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required: [name, description]
+          properties:
+            name:
+              type: string
+            description:
+              type: string
+
+  output_error:
+    type: object
+    required: [error]
+    properties:
+      error:
+        type: object
+        required: [code, message]
+        properties:
+          code:
+            type: string
+            enum: [auth_failed, timeout, process_error, api_error, validation]
+          message:
+            type: string
+
+assertions:
+  - name: tool_name_non_empty
+    description: "tool_name must be a non-empty string"
+    input:
+      tool_name: ""
+    expect: error
+    error_code: validation
+
+  - name: success_has_content_array
+    description: "Successful tool call returns a content array with at least one entry"
+    input:
+      tool_name: keap_list_tags
+      args: {}
+    expect: success
+    validate: output_success
+
+  - name: list_tools_returns_array
+    description: "list_tools returns an array of tool descriptors"
+    input:
+      tool_name: list_tools
+    expect: success
+    validate: output_list_tools
+
+  - name: unknown_tool_returns_error
+    description: "Unknown tool name returns a validation error"
+    input:
+      tool_name: keap_nonexistent_tool
+      args: {}
+    expect: error
+    error_code: validation

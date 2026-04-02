@@ -1,0 +1,36 @@
+kind: agent
+id: executive/cto
+title: Chief Technology Officer
+schema_version: 0.2.0
+org:
+  department: executive
+  org_level: executive
+  reports_to: executive/ceo
+  manages:
+  - engineering/frontend-engineer
+  - engineering/backend-engineer
+  - engineering/email-engineer
+  - engineering/devops-engineer
+operation:
+  approvals:
+    default: confirm
+  audience: internal
+  exposure: private
+  channels: []
+  triggers: []
+  side_effects:
+  - type: read_only
+  integrations: []
+  execution:
+    timeout_seconds: 30
+    max_retries: 0
+policy:
+  cognition:
+    complexity: high
+    cost_posture: premium
+    risk_posture: critical
+identity:
+  display_name: Cto
+provenance:
+  lifecycle: managed
+  source: scaffold-adopt

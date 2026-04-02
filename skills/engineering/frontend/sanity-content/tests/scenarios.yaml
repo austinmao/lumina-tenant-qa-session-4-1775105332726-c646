@@ -1,0 +1,71 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/website/sanity-content
+  trigger: /sanity
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: sanity-reads-site-context
+  description: Invoking /sanity reads the active site's dataset from site-context
+    before any operation.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /sanity query '*[_type == "page"][0]'
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/site-context.yaml
+    sections:
+    - sanity.dataset
+    - sanity.project_id
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: sanity-requires-approval
+  description: Write operations (POST/PUT mutations) must not execute without Austin
+    approval.
+  tags:
+  - permission
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /sanity create --type page --title "Test Page"
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: http.post
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - &id001
+    type: no_span_errors
+- name: sanity-requires-token
+  description: Fails gracefully when SANITY_API_TOKEN env var is not set.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: env_unset
+    var: SANITY_API_TOKEN
+  when:
+    invoke: /sanity query '*[_type == "page"][0]'
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: http.get
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - *id001

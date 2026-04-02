@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/seo-strategy
+  trigger: /seo-strategy
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: seo-strategy-smoke
+  description: SEO strategy produces content and keyword strategy.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /seo-strategy example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/seo-strategy-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/seo-strategy-report.md
+    sections:
+    - Content Strategy
+    - Keyword
+    - Architecture
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: seo-strategy-no-site
+  description: No site context prompts for selection.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /seo-strategy example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/seo-strategy-report.md
+    sections:
+    - site
+  - type: no_span_errors

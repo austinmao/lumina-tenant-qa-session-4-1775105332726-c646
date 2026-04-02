@@ -1,0 +1,157 @@
+kind: agent
+id: engineering/frontend-engineer
+title: Frontend Engineer
+description: Engineering department lead for Lumina OS. Builds web frontends with
+  Next.js, React, TypeScript, Sanity CMS, and Tailwind CSS.
+schema_version: 0.2.0
+identity:
+  display_name: Frontend Engineer
+  emoji: "\U0001F4BB"
+org:
+  department: engineering
+  business_function: web-development
+  domain: engineering
+  reports_to: executive/cto
+  org_level: manager
+  manages:
+  - engineering/backend-engineer
+  - engineering/email-engineer
+  - engineering/devops-engineer
+operation:
+  audience: internal
+  exposure: private
+  channels:
+  - type: slack
+    audience: operator
+    mode: both
+    approval_posture: confirm
+  triggers: []
+  side_effects:
+  - type: internal_write
+    description: Creates and modifies web application source code
+  - type: publish_content
+    description: Deploys website changes via Vercel
+  approvals:
+    default: confirm
+  integrations:
+  - vercel
+  - sanity
+  execution:
+    timeout_seconds: 120
+    max_retries: 1
+    idempotent: true
+  coordination:
+    pattern: orchestrator
+    can_spawn: true
+    max_spawn_depth: 1
+    accepts_handoffs_from:
+    - executive/cmo
+    produces_handoffs_for:
+    - engineering/backend-engineer
+    - engineering/email-engineer
+    - engineering/devops-engineer
+  escalation:
+    chain:
+    - executive/cmo
+    - operator
+    timeout_seconds: 300
+    fallback_behavior: escalate
+  resilience:
+    circuit_breaker_threshold: 3
+    fallback_agent: null
+  scheduling:
+    max_concurrent: 2
+    quiet_hours: null
+    sla_response_seconds: 3600
+policy:
+  cognition:
+    complexity: medium
+    cost_posture: standard
+    risk_posture: low
+  memory:
+    retrieval_mode: universal_file
+    namespaces:
+    - engineering
+    - shared
+    write_permitted: true
+    fallback_behavior: file_only
+    routing_compatible: true
+  security:
+    strict: true
+    prompt_injection_guard: true
+    secret_handling: env_only
+    allowed_tools:
+    - read
+    - write
+    - exec
+    denied_tools: []
+  resource_limits:
+    max_tokens_per_session: 100000
+    max_sessions_per_day: 25
+    max_outbound_per_day: 10
+  compliance:
+    data_classification: internal
+    handles_pii: false
+    handles_phi: false
+    retention_days: 90
+  observability:
+    log_level: standard
+    cost_tracking: true
+    alert_on_failure: true
+    paperclip_sync: true
+  qa:
+    enabled: true
+    categories:
+      smoke: true
+      contract: true
+      integration: true
+      security: true
+      drift: true
+      golden: true
+    required_pass_rate: 1.0
+  documentation:
+    generate_registry_entry: true
+    generate_claude_md_section: true
+    sections: []
+  profiles:
+  - base/standard
+  - security/standard
+  - qa/standard
+  - memory/standard
+governance:
+  paperclip:
+    export: true
+    agent_type: null
+    include_in_org_chart: true
+    include_in_heartbeat: false
+    issue_id: null
+  visibility: internal
+  budget_tier: standard
+  risk_tier: low
+  approval_tier: medium
+  five_forces:
+    forces:
+    - cognitive_mode
+    - parallel_execution
+    justification: "Different cognitive mode (web code generation \u2014 Next.js,\
+      \ React, TypeScript), parallel execution with Backend Engineer"
+provenance:
+  created_at: '2026-03-17T00:00:00Z'
+  updated_at: '2026-03-17T00:00:00Z'
+  lifecycle: managed
+  source: scaffold-adopt
+agent:
+  heartbeat:
+    enabled: false
+    cadence_minutes: 60
+    checklist: []
+  workspace_files:
+  - SOUL.md
+  - AGENTS.md
+  - MEMORY.md
+  soul_voice_section: Who I Am
+  tools_allowlist:
+  - read
+  - write
+  - exec
+  tools_denylist: []

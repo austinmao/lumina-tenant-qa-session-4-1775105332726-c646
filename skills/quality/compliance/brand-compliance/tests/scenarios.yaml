@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/compliance/brand-compliance
+  trigger: /brand-compliance
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: brand-compliance-smoke
+  description: Brand compliance audit checks logos, colors, and typography.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /brand-compliance example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/brand-compliance-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/brand-compliance-report.md
+    sections:
+    - Logo
+    - Color
+    - Typography
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: brand-compliance-wrong-font
+  description: Non-brand font usage is flagged.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /brand-compliance example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/brand-compliance-report.md
+    sections:
+    - font
+  - type: no_span_errors

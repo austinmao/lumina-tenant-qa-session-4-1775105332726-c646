@@ -1,0 +1,51 @@
+meta:
+  skill: post-webinar-close
+  path: skills/campaigns/email/post-webinar-close
+  trigger: /post-webinar-close
+  version: "1.0.0"
+  description: Validates post-webinar close sequence generation
+
+scenarios:
+- name: close-sequence-generate-full
+  description: Given a pipeline with event_date passed and segment watched-replay-no-book, produces 5-7 email sequence brief with correct emotional arc
+  steps:
+    - type: invoke
+      invoke: /post-webinar-close Generate close sequence for have-a-good-trip-v2 pipeline
+  assertions:
+    - type: output_contains
+      value: "close-sequence-brief.yaml"
+    - type: output_contains
+      value: "close-copy-deck.md"
+
+- name: close-sequence-respects-enrollment-window
+  description: Given a 7-day enrollment window, timing of E2-E7 fits within the window with E7 at final hours
+  steps:
+    - type: invoke
+      invoke: /post-webinar-close Generate close sequence with 7-day enrollment window
+  assertions:
+    - type: output_contains
+      value: "day: 7"
+    - type: output_contains
+      value: "last call"
+
+- name: close-sequence-off-ramp-present
+  description: Output includes an E8 off-ramp email routing non-buyers to nurture sequence
+  steps:
+    - type: invoke
+      invoke: /post-webinar-close Generate close sequence with off-ramp
+  assertions:
+    - type: output_contains
+      value: "off-ramp"
+    - type: output_contains
+      value: "nurture"
+
+- name: close-sequence-no-shame-language
+  description: No email in the sequence uses shame, guilt, or fear amplification
+  steps:
+    - type: invoke
+      invoke: /post-webinar-close Generate close sequence and verify tone
+  assertions:
+    - type: output_not_contains
+      value: "you missed out"
+    - type: output_not_contains
+      value: "don't miss"

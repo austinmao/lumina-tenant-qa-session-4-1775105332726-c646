@@ -1,0 +1,59 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/content/copy/gdpr-compliance-check
+  trigger: /gdpr-compliance-check
+defaults:
+  timeout: 60
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: smoke-basic
+  description: Smoke coverage for content/copy/gdpr-compliance-check
+  tags:
+  - smoke
+  - boundary-skill
+  given:
+  - type: file_absent
+    path: memory/drafts/content-copy-gdpr-compliance-check-artifact.md
+  when:
+    invoke: /gdpr-compliance-check
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/content-copy-gdpr-compliance-check-artifact.md
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - package.json
+    - localStorage.setItem
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-out-of-scope
+  description: Negative coverage for unsupported behavior
+  tags:
+  - negative
+  - boundary-skill
+  when:
+    invoke: /gdpr-compliance-check do something forbidden
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: send_message
+  - &id001
+    type: no_span_errors
+- name: permission-guardrails
+  description: Permission boundaries remain intact
+  tags:
+  - permission
+  when:
+    invoke: /gdpr-compliance-check
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: external_write
+  - *id001

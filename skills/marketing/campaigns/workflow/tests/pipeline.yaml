@@ -1,0 +1,16 @@
+version: "1.0"
+pipeline:
+  name: campaign-workflow
+  skill_path: skills/marketing/campaigns/workflow
+  trigger: /generate-campaign
+  stages: 1
+  estimated_duration: 15m
+stages:
+  - name: intake
+    agent: agents-marketing-campaign-orchestrator
+    produces: memory/campaigns/{{today}}-campaign.md
+final_assertions:
+  deterministic:
+    - type: artifact_exists
+      path: memory/campaigns/{{today}}-campaign.md
+pipeline_health: []

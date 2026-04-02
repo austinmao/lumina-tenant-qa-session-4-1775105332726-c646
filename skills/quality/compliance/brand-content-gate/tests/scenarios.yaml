@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/compliance/brand-content-gate
+  trigger: /brand-content-gate
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: brand-content-gate-smoke
+  description: Brand content gate validates against voice and kill list.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /brand-content-gate example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/brand-content-gate-result.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/brand-content-gate-result.md
+    sections:
+    - Brand Voice
+    - Kill List
+    - CTA
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: brand-gate-kill-list
+  description: Kill-list words produce blocking violation.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /brand-content-gate example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/brand-content-gate-result.md
+    sections:
+    - BLOCKING
+  - type: no_span_errors

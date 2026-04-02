@@ -1,0 +1,46 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/backend/api-routes
+  trigger: /api-routes
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: api-routes-smoke
+  description: Build a Next.js API route with request validation and error handling.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /api-routes Create a POST /api/contacts route with email validation
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/api-routes-spec.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/api-routes-spec.md
+    sections:
+    - POST
+    - validation
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: api-routes-edge-middleware
+  description: API route includes middleware chain for auth and rate limiting.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /api-routes Add auth middleware and rate limiting to /api/admin routes
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/api-routes-spec.md
+    sections:
+    - middleware
+  - type: no_span_errors

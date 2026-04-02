@@ -1,0 +1,53 @@
+meta:
+  skill: mailtrap-test
+  path: skills/quality/testing/mailtrap-test
+  trigger: /mailtrap-test
+  version: "1.0.0"
+  description: Validates Mailtrap sandbox email testing with quality + ClawWrap readiness checks
+
+scenarios:
+- name: mailtrap-all-checks-pass
+  description: A well-formed email with correct ClawWrap configuration passes all 10 checks
+  steps:
+    - type: invoke
+      invoke: /mailtrap-test Run sandbox test on RegistrantInsightV2 template with provider resend
+  assertions:
+    - type: output_contains
+      value: "verdict: pass"
+    - type: output_not_contains
+      value: "fail"
+
+- name: mailtrap-missing-unsubscribe-fail
+  description: An email without an unsubscribe link fails the unsubscribe_present check
+  steps:
+    - type: invoke
+      invoke: /mailtrap-test Run sandbox test on test-no-unsub.html with provider resend
+  assertions:
+    - type: output_contains
+      value: "unsubscribe_present"
+    - type: output_contains
+      value: "fail"
+
+- name: mailtrap-unregistered-from-fail
+  description: An email with a from_address not in targets.yaml fails from_address_registered
+  steps:
+    - type: invoke
+      invoke: /mailtrap-test Run sandbox test with from unknown@notregistered.com
+  assertions:
+    - type: output_contains
+      value: "from_address_registered"
+    - type: output_contains
+      value: "fail"
+
+- name: mailtrap-sandbox-unavailable
+  description: When Mailtrap sandbox is unreachable, the delivery check fails with infrastructure error
+  preconditions:
+    env_unset: MAILTRAP_API_KEY
+  steps:
+    - type: invoke
+      invoke: /mailtrap-test Run sandbox test on RegistrantInsightV2
+  assertions:
+    - type: output_contains
+      value: "delivery"
+    - type: output_contains
+      value: "fail"

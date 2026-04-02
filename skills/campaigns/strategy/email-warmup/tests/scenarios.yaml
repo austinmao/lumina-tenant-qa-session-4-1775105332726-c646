@@ -1,0 +1,126 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/strategy/email-warmup
+  trigger: /email-warmup
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: warmup-schedule-correct-tiers
+  description: >
+    Warmup schedule defines exactly 7 tiers with approximately 2x volume
+    increase every 3 days, starting at 50 sends/day.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /email-warmup Start warmup for domain mail.example.com with domain
+      ID dom_test123
+    params:
+      test_mode: true
+      domain: mail.example.com
+      domain_id: dom_test123
+  then:
+  - type: artifact_exists
+    path: memory/logs/qa/warmup-mail.example.com-{{today}}.yaml
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/logs/qa/warmup-mail.example.com-{{today}}.yaml
+    sections:
+    - current_tier
+    - daily_volume_limit
+    - verdict
+  - type: response_contains
+    values:
+    - "50"
+    - "100"
+    - "250"
+    - "500"
+    - "1,000"
+    - "2,000"
+    - "Full volume"
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+
+- name: warmup-complaint-pause
+  description: >
+    When complaint rate exceeds 0.1% pause threshold, the verdict is pause
+    and the report includes step_back_tier and resume_date fields.
+  tags:
+  - edge
+  - p0
+  when:
+    invoke: /email-warmup Check warmup health for domain mail.example.com
+    params:
+      test_mode: true
+      domain: mail.example.com
+      domain_id: dom_test123
+      mock_stats:
+        sent: 1000
+        bounced: 10
+        complained: 2
+        opened: 350
+  then:
+  - type: artifact_exists
+    path: memory/logs/qa/warmup-mail.example.com-{{today}}.yaml
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/logs/qa/warmup-mail.example.com-{{today}}.yaml
+    values:
+    - "verdict: pause"
+    - "step_back_tier"
+    - "resume_date"
+    - "triggered_by"
+  - type: response_contains
+    values:
+    - "pause"
+    - "complaint"
+  - type: no_span_errors
+
+- name: warmup-report-format
+  description: >
+    Daily warmup report YAML includes all required fields: domain, date,
+    current_tier, daily_volume_limit, stats, rates, and verdict.
+  tags:
+  - smoke
+  - p1
+  when:
+    invoke: /email-warmup Generate warmup report for domain mail.example.com
+    params:
+      test_mode: true
+      domain: mail.example.com
+      domain_id: dom_test123
+      mock_stats:
+        sent: 95
+        bounced: 1
+        complained: 0
+        opened: 42
+  then:
+  - type: artifact_exists
+    path: memory/logs/qa/warmup-mail.example.com-{{today}}.yaml
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/logs/qa/warmup-mail.example.com-{{today}}.yaml
+    values:
+    - "domain:"
+    - "date:"
+    - "current_tier:"
+    - "daily_volume_limit:"
+    - "stats:"
+    - "sent:"
+    - "bounced:"
+    - "complained:"
+    - "opened:"
+    - "rates:"
+    - "bounce:"
+    - "complaint:"
+    - "open:"
+    - "verdict:"
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute

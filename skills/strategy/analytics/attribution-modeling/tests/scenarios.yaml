@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/analytics/attribution-modeling
+  trigger: /attribution-modeling
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: attribution-modeling-smoke
+  description: Attribution modeling produces multi-touch report.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /attribution-modeling example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/attribution-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/attribution-report.md
+    sections:
+    - Attribution
+    - Channel
+    - Touchpoint
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: attribution-single-touch
+  description: Single touchpoint defaults to last-touch.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /attribution-modeling example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/attribution-report.md
+    sections:
+    - last-touch
+  - type: no_span_errors

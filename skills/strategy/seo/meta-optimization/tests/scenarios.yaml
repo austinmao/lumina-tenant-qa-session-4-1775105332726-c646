@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/meta-optimization
+  trigger: /meta-optimization
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: meta-optimization-smoke
+  description: Meta optimization produces title and description variations.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /meta-optimization example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/meta-optimization-output.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/meta-optimization-output.md
+    sections:
+    - Title
+    - Description
+    - Character
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: meta-optimization-length
+  description: Titles stay within 50-60 char limit.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /meta-optimization example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/meta-optimization-output.md
+    sections:
+    - limit
+  - type: no_span_errors

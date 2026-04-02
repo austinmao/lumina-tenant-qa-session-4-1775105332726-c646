@@ -1,0 +1,75 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/devops/vercel-deployment
+  trigger: /vercel-deployment
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: vercel-deploy-preview
+  description: Invoking /vercel-deployment for a preview deploy produces a preview
+    URL.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: Deploy a preview of the current site
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: preview
+  - &id002
+    type: no_span_errors
+  - &id003
+    type: tool_not_invoked
+    tool: shell.execute
+- name: vercel-requires-token
+  description: Fails gracefully when VERCEL_TOKEN is not set.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: env_unset
+    var: VERCEL_TOKEN
+  when:
+    invoke: /vercel-deployment
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: VERCEL_TOKEN
+  - &id001
+    type: no_span_errors
+- name: vercel-production-requires-approval
+  description: Production deployment does not execute without operator approval.
+  tags:
+  - permission
+  - p0
+  when:
+    invoke: Deploy to production immediately
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: approval
+  - type: tool_not_called
+    tool: shell.execute
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - *id001
+- name: vercel-rollback-reports-details
+  description: Rollback command reports previous and new deployment IDs.
+  tags:
+  - smoke
+  - p1
+  when:
+    invoke: Roll back the production deployment to the previous version
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: rollback
+  - *id002
+  - *id003

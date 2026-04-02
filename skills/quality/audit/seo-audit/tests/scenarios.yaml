@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/audit/seo-audit
+  trigger: /seo-audit
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: seo-audit-smoke
+  description: SEO audit produces a weighted score across six categories.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /seo-audit example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/seo-audit-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/seo-audit-report.md
+    sections:
+    - Meta Tags
+    - Open Graph
+    - Structured Data
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: seo-audit-missing-meta
+  description: Missing meta description is a blocking finding.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /seo-audit example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/seo-audit-report.md
+    sections:
+    - missing
+  - type: no_span_errors

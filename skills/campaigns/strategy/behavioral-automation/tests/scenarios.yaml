@@ -1,0 +1,135 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/strategy/behavioral-automation
+  trigger: /behavioral-automation
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: behavioral-rule-format-valid
+  description: Output YAML has trigger, condition, action, delay, and suppression
+    fields for every defined trigger.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /behavioral-automation Define behavioral automation rules for a webinar
+      campaign with replay
+    params:
+      test_mode: true
+      campaign_type: webinar-replay
+  then:
+  - type: artifact_exists
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    sections:
+    - triggers
+    - global_suppression
+    - trigger_priority
+  - type: artifact_yaml_valid
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    required_fields:
+    - triggers[*].name
+    - triggers[*].condition
+    - triggers[*].action
+    - triggers[*].delay
+    - triggers[*].suppression
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+
+- name: behavioral-suppression-works
+  description: Converted contact is suppressed from all behavioral triggers.
+  tags:
+  - logic
+  - p0
+  when:
+    invoke: /behavioral-automation Define behavioral rules for a retreat launch.
+      Verify that a contact with contact_converted == true is excluded from every
+      trigger.
+    params:
+      test_mode: true
+      campaign_type: retreat-launch
+  then:
+  - type: artifact_exists
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    sections:
+    - global_suppression
+  - type: artifact_contains_text
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    text: contact_converted == true
+    min_occurrences: 1
+  - type: artifact_yaml_field_check
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    check: every_trigger_suppression_includes
+    value: contact_converted == true
+  - type: no_span_errors
+
+- name: behavioral-timing-respects-cadence
+  description: No behavioral trigger fires within 3 hours of last email to that
+    contact, matching Beacon cadence rules.
+  tags:
+  - logic
+  - p1
+  when:
+    invoke: /behavioral-automation Define behavioral rules for a program enrollment
+      campaign. Confirm that cadence rules prevent any behavioral email from
+      firing within 3 hours of a scheduled broadcast.
+    params:
+      test_mode: true
+      campaign_type: program-enrollment
+  then:
+  - type: artifact_exists
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains_text
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    text: last_any_email < 3h
+    min_occurrences: 1
+  - type: artifact_contains
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    sections:
+    - global_suppression
+    - cadence_rules
+  - type: no_span_errors
+
+- name: behavioral-rule-no-stack
+  description: Maximum 1 behavioral email per 48-hour window per contact. No
+    trigger stacking allowed.
+  tags:
+  - logic
+  - p1
+  when:
+    invoke: /behavioral-automation Define behavioral rules for a webinar campaign
+      with application form. Verify that the 48-hour behavioral email cap
+      prevents stacking multiple behavioral sends.
+    params:
+      test_mode: true
+      campaign_type: webinar-application
+  then:
+  - type: artifact_exists
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains_text
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    text: last_behavioral_email < 48h
+    min_occurrences: 1
+  - type: artifact_yaml_field_check
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    check: every_trigger_suppression_includes
+    value: last_behavioral_email < 48h
+  - type: artifact_contains
+    path: memory/campaign-runs/test/test-pipeline/inputs/behavioral-rules.yaml
+    sections:
+    - trigger_priority
+  - type: no_span_errors

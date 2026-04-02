@@ -1,0 +1,56 @@
+version: "1.0"
+target:
+  type: skill
+  path: skills/marketing/campaigns/workflow
+  trigger: /generate-campaign
+
+defaults:
+  timeout: 2400
+  test_mode: true
+  poll_interval: 10
+
+scenarios:
+  - name: campaign-resume-after-copy-completed
+    description: "Pre-seeded state with copy completed + html pending. Resume skips copy, spawns email engineer."
+    tags: [resume, p0]
+    given:
+      - type: file_present
+        path: memory/pipelines/campaign-test-resume/state.yaml
+    when:
+      invoke: "/generate-campaign webinar nurture for Feel Fully Alive"
+      params:
+        test_mode: true
+    then:
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "sessions_spawn.*agents-marketing-copywriter"
+        absent: true
+      - type: delegation_occurred
+        from: campaign-orchestrator
+        to: agents-marketing-email-engineer
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+      - type: tool_not_called
+        tool: resend.send
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+  - name: campaign-resume-stops-before-guarded-stage
+    description: "Pending stage with approval_guard. Resume resets guard and returns escalate."
+    tags: [resume, guard, p0]
+    given:
+      - type: file_present
+        path: memory/pipelines/campaign-test-guard/state.yaml
+    when:
+      invoke: "/generate-campaign webinar nurture for Feel Fully Alive"
+      params:
+        test_mode: true
+    then:
+      - type: tool_not_called
+        tool: resend.send
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "/api/events|/api/offers|/api/campaigns"
+        absent: true

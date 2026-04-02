@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/visual/illustration
+  trigger: /illustration
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: illustration-smoke
+  description: Invoking illustration produces a direction brief with style, color
+    rules, and complexity level.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /illustration icon system for retreat website navigation
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/illustration-brief.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/illustration-brief.md
+    sections:
+    - Visual Language
+    - Color Rules
+    - Complexity
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: illustration-monochrome-fallback
+  description: Illustration brief specifies that assets must work in both full-color
+    and monochrome.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /illustration spot illustration for email header
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/illustration-brief.md
+    sections:
+    - monochrome
+  - type: no_span_errors

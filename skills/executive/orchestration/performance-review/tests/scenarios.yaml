@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/executive/orchestration/performance-review
+  trigger: /performance-review
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: performance-review-smoke
+  description: Track startup metrics and produce a performance dashboard.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /performance-review Calculate unit economics and growth metrics for Q1
+      2026
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/performance-review.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/performance-review.md
+    sections:
+    - metric
+    - growth
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: performance-review-edge-fundraising
+  description: Fundraising-ready dashboard includes investor-relevant metrics.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /performance-review Prepare investor-ready metrics dashboard for seed
+      round
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/performance-review.md
+    sections:
+    - investor
+  - type: no_span_errors

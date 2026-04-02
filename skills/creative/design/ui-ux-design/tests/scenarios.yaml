@@ -1,0 +1,57 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/design/ui-ux-design
+  trigger: /ui-ux-design
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: ui-ux-design-smoke
+  description: Invoking ui-ux-design produces a seven-section design spec with color
+    tokens, typography, and interaction states.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-a
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /ui-ux-design hero component for retreat landing page
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/ui-ux-design-spec.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/ui-ux-design-spec.md
+    sections:
+    - Color
+    - Typography
+    - Interaction
+    - Responsive
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: ui-ux-design-no-site-context
+  description: Invoking without an active site prompts for site selection instead
+    of producing a spec.
+  tags:
+  - negative
+  - p1
+  given:
+  - type: artifact_absent
+    path: memory/site-context.yaml
+  when:
+    invoke: /ui-ux-design card component
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: write
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

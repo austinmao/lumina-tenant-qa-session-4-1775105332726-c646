@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/geo/geo-citability
+  trigger: /geo-citability
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: geo-citability-smoke
+  description: Citability scoring produces passage-level analysis.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /geo-citability example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/geo-citability-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/geo-citability-report.md
+    sections:
+    - Citability Score
+    - Answer Block
+    - Self-Containment
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: geo-citability-low
+  description: Low-citability content triggers rewrite suggestions.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /geo-citability example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/geo-citability-report.md
+    sections:
+    - rewrite
+  - type: no_span_errors

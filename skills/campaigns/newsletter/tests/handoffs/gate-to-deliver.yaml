@@ -1,0 +1,40 @@
+version: "1.0"
+handoff:
+  from: skills-newsletter-sub-skills-gate
+  to: skills-newsletter-sub-skills-deliver
+  mechanism: sessions_spawn
+caller_provides:
+  required_context:
+    - name: approval_state
+      description: Gate pass result plus Austin approval status for the issue.
+  required_artifacts:
+    - path_pattern: memory/drafts/{{today}}-sunday-service.md
+      description: Gate-passed draft used as the single source of truth for render/send.
+    - path_pattern: memory/drafts/{{today}}-sunday-service-segment.md
+      description: Fresh segment manifest consumed by deliver.
+callee_produces:
+  required_artifacts:
+    - path_pattern: memory/logs/sends/{{today}}-sunday-service.md
+      description: Send report written after the staged newsletter delivery.
+      required_sections:
+        - Send Report
+  prohibited_actions:
+    - tool: slack.chat.postMessage
+      reason: Deliver must not invent a new approval step after the gate has passed.
+assertions:
+  post_delegation:
+    - type: artifact_exists
+      path: memory/logs/sends/{{today}}-sunday-service.md
+    - type: tool_called
+      tool: outbound.submit
+      log_path: /tmp/openclaw/openclaw-{{today}}.log
+      run_id: "{{run_id}}"
+      args:
+        route_mode: shared
+        context_key: newsletter
+        audience: sunday-service
+        channel: mailchimp
+        payload:
+          subject: "{{newsletter_subject}}"
+          html_body: "{{rendered_html}}"
+

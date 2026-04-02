@@ -1,0 +1,17 @@
+{
+  "owner": "luminamao",
+  "slug": "zoom",
+  "displayName": "Zoom Meeting Manager",
+  "version": "1.0.0",
+  "publishedAt": null,
+  "history": [],
+  "auditStatus": {
+    "skills.code_safety": {
+      "finding": "env-harvesting",
+      "disposition": "false-positive",
+      "reviewedBy": "luminamao",
+      "reviewedAt": "2026-03-02",
+      "reason": "process.env access at zoom-cli.js:26 is a required-env validation check that exits on missing vars. The only network destination is api.zoom.us/oauth/token (Server-to-Server OAuth). Confirmed first-party code — owner luminamao. permissions.network:true and requires.env declared in SKILL.md frontmatter."
+    }
+  }
+}

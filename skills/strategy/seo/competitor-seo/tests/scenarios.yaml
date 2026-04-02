@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/competitor-seo
+  trigger: /competitor-seo
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: competitor-seo-smoke
+  description: Competitor SEO identifies keyword overlap.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /competitor-seo example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/competitor-seo-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/competitor-seo-report.md
+    sections:
+    - Overlap
+    - Cannibalization
+    - Gap
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: competitor-seo-no-overlap
+  description: No overlap confirms differentiation.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /competitor-seo example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/competitor-seo-report.md
+    sections:
+    - differentiation
+  - type: no_span_errors

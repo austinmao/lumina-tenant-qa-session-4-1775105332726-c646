@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/strategy/ab-test-setup
+  trigger: /ab-test-setup
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: ab-test-setup-smoke
+  description: Design an A/B test with hypothesis, sample size, and success metrics.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /ab-test-setup Design an A/B test for the retreat landing page headline
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/ab-test-plan.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/ab-test-plan.md
+    sections:
+    - hypothesis
+    - sample size
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: ab-test-setup-edge-low-traffic
+  description: Low-traffic test uses sequential testing or Bayesian approach instead
+    of frequentist.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /ab-test-setup Design an A/B test for a page with only 200 weekly visitors
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/ab-test-plan.md
+    sections:
+    - low-traffic
+  - type: no_span_errors

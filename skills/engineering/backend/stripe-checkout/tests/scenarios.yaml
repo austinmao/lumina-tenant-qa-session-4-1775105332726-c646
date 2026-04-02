@@ -1,0 +1,58 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/backend/stripe-checkout
+  trigger: /stripe-checkout
+defaults:
+  timeout: 60
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: smoke-basic
+  description: Smoke coverage for engineering/backend/stripe-checkout
+  tags:
+  - smoke
+  - boundary-skill
+  given:
+  - type: file_absent
+    path: memory/drafts/engineering-backend-stripe-checkout-artifact.md
+  when:
+    invoke: /stripe-checkout
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/engineering-backend-stripe-checkout-artifact.md
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - payment_intent.succeeded
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-out-of-scope
+  description: Negative coverage for unsupported behavior
+  tags:
+  - negative
+  - boundary-skill
+  when:
+    invoke: /stripe-checkout do something forbidden
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: send_message
+  - &id001
+    type: no_span_errors
+- name: permission-guardrails
+  description: Permission boundaries remain intact
+  tags:
+  - permission
+  when:
+    invoke: /stripe-checkout
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: external_write
+  - *id001

@@ -1,0 +1,54 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/product/design/design-system-doc
+  trigger: /design-system-doc
+defaults:
+  timeout: 45
+  test_mode: true
+  poll_interval: 3
+scenarios:
+- name: smoke-basic
+  description: Smoke coverage for product/design/design-system-doc
+  tags:
+  - smoke
+  - interior-skill
+  given:
+  - type: file_absent
+    path: memory/drafts/product-design-design-system-doc-artifact.md
+  when:
+    invoke: /design-system-doc
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/product-design-design-system-doc-artifact.md
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-out-of-scope
+  description: Negative coverage for unsupported behavior
+  tags:
+  - negative
+  - interior-skill
+  when:
+    invoke: /design-system-doc do something forbidden
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: send_message
+  - &id001
+    type: no_span_errors
+- name: permission-guardrails
+  description: Permission boundaries remain intact
+  tags:
+  - permission
+  when:
+    invoke: /design-system-doc
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: external_write
+  - *id001

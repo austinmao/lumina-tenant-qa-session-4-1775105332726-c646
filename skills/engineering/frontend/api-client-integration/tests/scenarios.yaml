@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/frontend/api-client-integration
+  trigger: /api-client-integration
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: api-client-integration-smoke
+  description: Integrate client-side code with an external API.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /api-client-integration Integrate Attio CRM API for contact lookup in
+      the dashboard
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/api-client-integration-plan.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/api-client-integration-plan.md
+    sections:
+    - Attio
+    - client
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: api-client-integration-edge-error
+  description: Error handling covers network failures and rate limiting.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /api-client-integration Handle Calendly API rate limits and network timeouts
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/api-client-integration-plan.md
+    sections:
+    - rate limit
+  - type: no_span_errors

@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/visual/art-direction
+  trigger: /art-direction
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: art-direction-smoke
+  description: Invoking art-direction produces a moodboard with visual theme, color
+    direction, and photography brief.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /art-direction moodboard for spring retreat campaign
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/art-direction-brief.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/art-direction-brief.md
+    sections:
+    - Visual Theme
+    - Color Direction
+    - Photography
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: art-direction-brand-token-alignment
+  description: Color palette selections reference brand design tokens, not arbitrary
+    hex values.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /art-direction color palette for email series
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/art-direction-brief.md
+    sections:
+    - token
+  - type: no_span_errors

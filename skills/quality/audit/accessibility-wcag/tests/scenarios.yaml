@@ -1,0 +1,51 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/audit/accessibility-wcag
+  trigger: /accessibility-wcag
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: accessibility-wcag-smoke
+  description: Smoke audit on a page produces a WCAG report with all five audit dimensions
+    scored.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /accessibility-wcag https://example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/accessibility-audit-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/accessibility-audit-report.md
+    sections:
+    - Color Contrast
+    - Alt Text
+    - Keyboard Navigation
+    - ARIA Labels
+    - Focus Management
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: accessibility-wcag-non-html
+  description: Auditing a non-HTML file produces an error noting the input type is
+    unsupported.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /accessibility-wcag docs/context.yaml
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/accessibility-audit-report.md
+    sections:
+    - Non-HTML input
+  - type: no_span_errors

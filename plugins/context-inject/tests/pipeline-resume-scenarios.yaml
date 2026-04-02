@@ -1,0 +1,84 @@
+version: "1.0"
+target:
+  type: skill
+  path: plugins/context-inject
+  trigger: context-inject plugin
+
+defaults:
+  timeout: 180
+  test_mode: true
+  poll_interval: 5
+
+scenarios:
+  - name: session-death-mid-pipeline-recovery
+    description: "Pipeline state file is updated by the plugin after sub-agent completes, even when the orchestrator session is not explicitly resumed. State reflects reality regardless of orchestrator session state."
+    tags: [resume, plugin, p0]
+
+    when:
+      invoke: "Spawn a sub-agent with handoff-contract and pipeline-state references. The sub-agent produces its artifact. Verify the state file is updated."
+      params:
+        test_mode: true
+        spawn_agent: agents-frontend-designer
+        handoff_contract: memory/pipelines/website-test-plugin/design-handoff.yaml
+        pipeline_state: memory/pipelines/website-test-plugin/state.yaml
+
+    then:
+      - type: state_file
+        path: memory/pipelines/website-test-plugin/state.yaml
+        fields:
+          stages.0.status: completed
+          stages.0.verification: pass
+
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "context-inject.*Contract verification PASSED"
+
+  - name: stall-detection-triggers-escalation
+    description: "State file with running stage past threshold. Heartbeat detects stall and returns escalation signal."
+    tags: [resume, heartbeat, p0]
+    given:
+      - type: file_present
+        path: memory/pipelines/website-test-stall/state.yaml
+    when:
+      invoke: "Check for stalled pipelines and invoke /resume-pipeline."
+      params:
+        test_mode: true
+    then:
+      - type: state_file
+        path: memory/pipelines/website-test-stall/state.yaml
+        fields:
+          stages.0.status: stalled
+
+  - name: artifact-corruption-triggers-re-run
+    description: "Completed stage with deleted artifact. Resume marks stage failed and returns for retry."
+    tags: [resume, negative, p0]
+    given:
+      - type: file_present
+        path: memory/pipelines/website-test-corrupt/state.yaml
+      - type: file_absent
+        path: memory/pipelines/website-test-corrupt/artifacts/design.md
+    when:
+      invoke: "Resume the pipeline. The design artifact should be missing."
+      params:
+        test_mode: true
+    then:
+      - type: state_file
+        path: memory/pipelines/website-test-corrupt/state.yaml
+        fields:
+          stages.0.status: failed
+
+  - name: guarded-stage-escalates-until-reapproved
+    description: "Stalled pipeline whose next stage has approval_guard. Guard stays false, result is escalate."
+    tags: [resume, guard, heartbeat, p0]
+    given:
+      - type: file_present
+        path: memory/pipelines/website-test-guard-heartbeat/state.yaml
+    when:
+      invoke: "Check for stalled pipelines. Next actionable stage has approval_guard."
+      params:
+        test_mode: true
+    then:
+      - type: state_file
+        path: memory/pipelines/website-test-guard-heartbeat/state.yaml
+        fields:
+          guards.deploy_to_vercel: false

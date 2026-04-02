@@ -1,0 +1,89 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/strategy/webinar-page-cro
+  trigger: /webinar-page-cro
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: webinar-page-countdown-present
+  description: Countdown timer references event_date and degrades gracefully after the event.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /webinar-page-cro Audit the webinar registration page for countdown timer
+      compliance. The event_date is 2026-04-15T18:00:00Z.
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/webinar-page-cro-analysis.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/webinar-page-cro-analysis.md
+    sections:
+    - countdown
+    - event_date
+  - type: artifact_not_contains
+    path: memory/reports/webinar-page-cro-analysis.md
+    patterns:
+    - negative countdown
+    - NaN
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: webinar-page-social-proof-honest
+  description: Social proof counter uses live count or static threshold, never fabricated numbers.
+  tags:
+  - edge
+  - p0
+  when:
+    invoke: /webinar-page-cro Review the social proof counter on the webinar registration
+      page. Current registrant count is 47.
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/webinar-page-cro-analysis.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/webinar-page-cro-analysis.md
+    sections:
+    - social proof
+  - type: artifact_not_contains
+    path: memory/reports/webinar-page-cro-analysis.md
+    patterns:
+    - 500+ registered
+    - 1000+ registered
+    - thousands
+  - type: no_span_errors
+- name: webinar-page-cta-compliant
+  description: CTA text uses approved language from page-cro Layer 3 and avoids prohibited patterns.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /webinar-page-cro Audit the webinar page CTAs for compliance with approved
+      CTA language. Current CTAs are "Sign Up Now" and "Claim Your Spot".
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/webinar-page-cro-analysis.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/webinar-page-cro-analysis.md
+    sections:
+    - CTA
+    - rejected
+  - type: artifact_not_contains
+    path: memory/reports/webinar-page-cro-analysis.md
+    patterns:
+    - Sign Up Now.*approved
+    - Claim Your Spot.*approved
+  - type: no_span_errors

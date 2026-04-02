@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/strategy/campaign-strategy
+  trigger: /campaign-strategy
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: campaign-strategy-smoke
+  description: Plan an email and SMS campaign strategy with segmentation and calendar.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /campaign-strategy Plan Q2 campaign strategy for retreat launch with list
+      segmentation
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/campaign-strategy-plan.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/campaign-strategy-plan.md
+    sections:
+    - segment
+    - calendar
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: campaign-strategy-edge-small-list
+  description: Strategy for a small list addresses frequency and fatigue concerns.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /campaign-strategy Design campaign strategy for a list under 500 subscribers
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/campaign-strategy-plan.md
+    sections:
+    - frequency
+  - type: no_span_errors

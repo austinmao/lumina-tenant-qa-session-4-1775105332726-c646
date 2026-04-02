@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/geo/geo-crawlers
+  trigger: /geo-crawlers
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: geo-crawlers-smoke
+  description: AI crawler access analysis produces a crawler access map.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /geo-crawlers example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/geo-crawlers-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/geo-crawlers-report.md
+    sections:
+    - GPTBot
+    - ClaudeBot
+    - PerplexityBot
+  - type: no_span_errors
+  - type: model_used
+    expected: GPT-User
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: geo-crawlers-all-blocked
+  description: Report handles sites blocking all AI crawlers.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /geo-crawlers example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/geo-crawlers-report.md
+    sections:
+    - blocked
+  - type: no_span_errors

@@ -1,0 +1,33 @@
+version: "1.0"
+handoff:
+  from: skills-newsletter-sub-skills-segment
+  to: skills-newsletter-sub-skills-brief
+  mechanism: sessions_spawn
+caller_provides:
+  required_context:
+    - name: segment_manifest
+      description: Stage-specific counts, CTA overrides, and suppression results.
+  required_artifacts:
+    - path_pattern: memory/drafts/{{today}}-sunday-service-segment.md
+      description: Segment manifest for the current issue.
+callee_produces:
+  required_artifacts:
+    - path_pattern: memory/drafts/{{today}}-sunday-service-brief.md
+      description: Newsletter content brief assembled from events, signals, and performance.
+      required_sections:
+        - Upcoming Events
+        - CTA Direction
+        - Prior Performance
+  prohibited_actions:
+    - tool: resend.send
+      reason: Brief assembly is a research step, not a send step.
+assertions:
+  post_delegation:
+    - type: artifact_exists
+      path: memory/drafts/{{today}}-sunday-service-brief.md
+    - type: artifact_contains
+      path: memory/drafts/{{today}}-sunday-service-brief.md
+      sections:
+        - Upcoming Events
+        - CTA Direction
+

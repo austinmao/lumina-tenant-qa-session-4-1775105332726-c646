@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/content/writing/long-form-content
+  trigger: /long-form-content
+defaults:
+  timeout: 120
+  test_mode: true
+scenarios:
+- name: long-form-content-smoke
+  description: Invoking long-form-content produces a structured article with outline,
+    draft, and optimization notes.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /long-form-content write a guide about psychedelic retreat preparation
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/long-form-draft.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/long-form-draft.md
+    sections:
+    - Outline
+    - Draft
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: long-form-content-word-count
+  description: Long-form output exceeds 1500-word minimum threshold.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /long-form-content write comprehensive guide about integration practices
+      after ceremony
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/long-form-draft.md
+    timeout: 120
+  - type: no_span_errors

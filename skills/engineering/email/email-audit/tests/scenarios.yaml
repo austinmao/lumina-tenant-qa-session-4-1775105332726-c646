@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/email/email-audit
+  trigger: /email-audit
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: email-audit-smoke
+  description: Smoke audit on an existing email template produces a two-phase report
+    with scores.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /email-audit templates/email/onboarding/WelcomeEmail.tsx
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/email-audit-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/email-audit-report.md
+    sections:
+    - 'Phase 1: Technical Compliance'
+    - 'Phase 2: Strategy Effectiveness'
+    - Overall Score
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: email-audit-missing-html
+  description: Auditing a file with no HTML content produces a partial report noting
+    the issue.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /email-audit docs/context.yaml
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/email-audit-report.md
+    sections:
+    - No HTML content detected
+  - type: no_span_errors

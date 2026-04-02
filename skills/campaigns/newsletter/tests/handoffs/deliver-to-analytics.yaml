@@ -1,0 +1,25 @@
+version: "1.0"
+handoff:
+  from: skills-newsletter-sub-skills-deliver
+  to: skills-newsletter-sub-skills-analytics
+  mechanism: sessions_spawn
+caller_provides:
+  required_context:
+    - name: send_report
+      description: Latest send report and delivery IDs needed for the 48-hour analytics followup.
+  required_artifacts:
+    - path_pattern: memory/logs/sends/{{today}}-sunday-service.md
+      description: Send report used to recover delivery IDs for analytics.
+callee_produces:
+  required_artifacts:
+    - path_pattern: memory/logs/analytics-summary.md
+      description: Rolling analytics summary updated after the delayed followup.
+      required_sections:
+        - Date
+  prohibited_actions:
+    - tool: resend.send
+      reason: Analytics is a reporting step and must not send new email.
+assertions:
+  post_delegation:
+    - type: artifact_exists
+      path: memory/logs/analytics-summary.md

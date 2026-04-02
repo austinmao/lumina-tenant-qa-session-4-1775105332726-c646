@@ -1,0 +1,51 @@
+meta:
+  skill: resend-broadcast
+  path: skills/operations/tools/resend/broadcast
+  trigger: /resend-broadcast
+  version: "1.0.0"
+  description: Validates Resend Broadcast skill — segments, broadcasts, domain stats
+
+scenarios:
+- name: resend-create-segment
+  description: Create a new Resend audience segment
+  steps:
+    - type: invoke
+      invoke: /resend-broadcast Create a segment named "Test Webinar Registrants"
+  assertions:
+    - type: output_contains
+      value: "segment"
+    - type: output_contains
+      value: "id"
+
+- name: resend-create-broadcast-draft
+  description: Create a broadcast in draft state (send false) — no ClawWrap required
+  steps:
+    - type: invoke
+      invoke: /resend-broadcast Create a draft broadcast to segment test-segment-id with subject "Test Broadcast"
+  assertions:
+    - type: output_contains
+      value: "broadcast"
+    - type: output_not_contains
+      value: "outbound.submit"
+
+- name: resend-schedule-via-clawwrap
+  description: Schedule a broadcast (send true) — must route through ClawWrap outbound.submit
+  steps:
+    - type: invoke
+      invoke: /resend-broadcast Schedule broadcast to webinar registrants for 2026-03-31T17:00:00Z
+  assertions:
+    - type: output_contains
+      value: "outbound.submit"
+    - type: output_contains
+      value: "resend-broadcast"
+
+- name: resend-pull-domain-stats
+  description: Pull domain-level delivery statistics — read-only, no ClawWrap
+  steps:
+    - type: invoke
+      invoke: /resend-broadcast Get domain stats for example.org
+  assertions:
+    - type: output_contains
+      value: "sent"
+    - type: output_contains
+      value: "opened"

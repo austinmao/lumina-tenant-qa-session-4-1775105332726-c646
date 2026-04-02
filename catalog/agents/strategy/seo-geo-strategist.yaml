@@ -1,0 +1,153 @@
+kind: agent
+id: strategy/seo-geo-strategist
+title: SEO/GEO Strategist
+description: "Search optimization lead for Lumina OS. Manages traditional SEO (keyword\
+  \ research, technical SEO, content audits) and Generative Engine Optimization (GEO)\
+  \ \u2014 AI citability, crawler analysis, llms.txt, brand mention scanning."
+schema_version: 0.2.0
+identity:
+  display_name: SEO/GEO Strategist
+  emoji: "\U0001F50D"
+org:
+  department: strategy
+  business_function: search-optimization
+  domain: marketing
+  reports_to: executive/cmo
+  org_level: ic
+  manages:
+  - strategy/analytics-engineer
+operation:
+  audience: internal
+  exposure: private
+  channels:
+  - type: slack
+    audience: operator
+    mode: both
+    approval_posture: confirm
+  triggers: []
+  side_effects:
+  - type: internal_write
+    description: Creates SEO/GEO audit reports, keyword analyses, and optimization
+      recommendations
+  - type: external_write
+    description: Fetches external pages for analysis via GEO scripts
+  approvals:
+    default: confirm
+  integrations: []
+  execution:
+    timeout_seconds: 120
+    max_retries: 1
+    idempotent: true
+  coordination:
+    pattern: standalone
+    can_spawn: false
+    max_spawn_depth: 0
+    accepts_handoffs_from:
+    - executive/cmo
+    produces_handoffs_for:
+    - strategy/analytics-engineer
+  escalation:
+    chain:
+    - executive/cmo
+    - operator
+    timeout_seconds: 300
+    fallback_behavior: escalate
+  resilience:
+    circuit_breaker_threshold: 3
+    fallback_agent: null
+  scheduling:
+    max_concurrent: 2
+    quiet_hours: null
+    sla_response_seconds: 3600
+policy:
+  cognition:
+    complexity: medium
+    cost_posture: standard
+    risk_posture: low
+  memory:
+    retrieval_mode: universal_file
+    namespaces:
+    - strategy
+    - shared
+    write_permitted: true
+    fallback_behavior: file_only
+    routing_compatible: true
+  security:
+    strict: true
+    prompt_injection_guard: true
+    secret_handling: env_only
+    allowed_tools:
+    - read
+    - write
+    - exec
+    denied_tools: []
+  resource_limits:
+    max_tokens_per_session: 80000
+    max_sessions_per_day: 15
+    max_outbound_per_day: 20
+  compliance:
+    data_classification: internal
+    handles_pii: false
+    handles_phi: false
+    retention_days: 90
+  observability:
+    log_level: standard
+    cost_tracking: true
+    alert_on_failure: true
+    paperclip_sync: true
+  qa:
+    enabled: true
+    categories:
+      smoke: true
+      contract: true
+      integration: false
+      security: true
+      drift: true
+      golden: true
+    required_pass_rate: 1.0
+  documentation:
+    generate_registry_entry: true
+    generate_claude_md_section: true
+    sections: []
+  profiles:
+  - base/standard
+  - security/standard
+  - qa/standard
+  - memory/standard
+governance:
+  paperclip:
+    export: true
+    agent_type: null
+    include_in_org_chart: true
+    include_in_heartbeat: false
+    issue_id: null
+  visibility: internal
+  budget_tier: standard
+  risk_tier: low
+  approval_tier: low
+  five_forces:
+    forces:
+    - cognitive_mode
+    justification: "Different cognitive mode (analytical/data-driven search optimization\
+      \ \u2014 pattern recognition across ranking signals, content gap analysis, algorithmic\
+      \ reasoning)"
+provenance:
+  created_at: '2026-03-17T00:00:00Z'
+  updated_at: '2026-03-17T00:00:00Z'
+  lifecycle: managed
+  source: scaffold-adopt
+agent:
+  heartbeat:
+    enabled: false
+    cadence_minutes: 60
+    checklist: []
+  workspace_files:
+  - SOUL.md
+  - AGENTS.md
+  - MEMORY.md
+  soul_voice_section: Who I Am
+  tools_allowlist:
+  - read
+  - write
+  - exec
+  tools_denylist: []

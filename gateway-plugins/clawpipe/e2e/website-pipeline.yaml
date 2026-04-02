@@ -1,0 +1,41 @@
+pipeline:
+  name: website-orchestration-e2e
+  version: "1.0"
+  description: >
+    E2E test pipeline for ClawPipe v0.1.0 — simulates a website build
+    orchestration with brand extraction, sitemap generation, HTML generation,
+    and validation stages. All artifacts written to /tmp/clawpipe-e2e/artifacts.
+
+defaults:
+  timeout: 30
+  max_retries: 1
+  backoff: linear
+
+stages:
+  - name: brand-extract
+    command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/stage-brand-extract.sh
+    env:
+      CLAWPIPE_ARTIFACTS: "${artifacts}"
+
+  - name: sitemap
+    command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/stage-sitemap.sh
+    depends_on: [brand-extract]
+    env:
+      CLAWPIPE_ARTIFACTS: "${artifacts}"
+
+  - name: html-gen
+    command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/stage-html-gen.sh
+    depends_on: [brand-extract, sitemap]
+    env:
+      CLAWPIPE_ARTIFACTS: "${artifacts}"
+
+  - name: validate
+    command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/stage-validate.sh
+    depends_on: [html-gen]
+    env:
+      CLAWPIPE_ARTIFACTS: "${artifacts}"
+
+paths:
+  base: "/tmp/clawpipe-e2e/${pipeline_id}"
+  artifacts: "/tmp/clawpipe-e2e/artifacts"
+  logs: "/tmp/clawpipe-e2e/${pipeline_id}/logs"

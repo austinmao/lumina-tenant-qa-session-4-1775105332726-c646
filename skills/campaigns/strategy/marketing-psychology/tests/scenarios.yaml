@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/strategy/marketing-psychology
+  trigger: /marketing-psychology
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: marketing-psychology-smoke
+  description: Apply behavioral psychology principles to a landing page for conversions.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /marketing-psychology Apply psychology frameworks to the retreat landing
+      page for higher conversion
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/psychology-analysis.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/psychology-analysis.md
+    sections:
+    - principle
+    - conversion
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: marketing-psychology-edge-ethical
+  description: Ethical guardrails flag manipulative dark patterns.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /marketing-psychology Review this page for dark patterns and manipulative
+      urgency tactics
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/psychology-analysis.md
+    sections:
+    - ethical
+  - type: no_span_errors

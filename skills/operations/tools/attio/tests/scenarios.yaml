@@ -1,0 +1,80 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/operations/tools/attio
+  trigger: /attio
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: attio-batch-update-requires-approval
+  description: Bulk contact update does not execute without Austin's approval.
+  tags:
+  - permission
+  - p0
+  when:
+    invoke: Update the job_title field to 'Facilitator' for all contacts tagged as
+      'retreat-staff'
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: approval
+  - type: tool_not_called
+    tool: shell.execute
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - &id001
+    type: no_span_errors
+- name: attio-batch-respects-size-limit
+  description: Batch operations respect the 50-record batch size limit.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: Update all 200 contacts in the 'Leads' list with a new status field
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: batch
+  - &id002
+    type: no_span_errors
+  - &id003
+    type: tool_sequence
+    expected:
+    - pagination.next_cursor
+    mode: contains
+  - &id004
+    type: tool_not_invoked
+    tool: shell.execute
+- name: attio-batch-delete-requires-individual-list
+  description: Batch delete presents every record for approval before executing.
+  tags:
+  - permission
+  - p0
+  when:
+    invoke: Delete all inactive contacts from the 'Stale Leads' list
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: approval
+  - type: not_contains
+    content: deleted successfully
+  - *id001
+- name: attio-read-operations-no-approval
+  description: Read-only operations work without approval.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: Query all contacts and show me the first 10
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: records
+  - *id002
+  - *id003
+  - *id004

@@ -1,0 +1,51 @@
+meta:
+  skill: ab-test-execution
+  path: skills/campaigns/orchestration/ab-test-execution
+  trigger: /ab-test-execution
+  version: "1.0.0"
+  description: Validates A/B test execution from split creation through winner send
+
+scenarios:
+- name: ab-test-create-mailchimp-variate
+  description: Given an A/B test plan for subject lines, creates a MailChimp variate campaign
+  steps:
+    - type: invoke
+      invoke: /ab-test-execution Create A/B test for subject lines on have-a-good-trip-v2
+  assertions:
+    - type: output_contains
+      value: "variate"
+    - type: output_contains
+      value: "campaign_id"
+
+- name: ab-test-create-resend-manual-split
+  description: Given an A/B test plan for Resend, creates two equal-size sub-segments
+  steps:
+    - type: invoke
+      invoke: /ab-test-execution Create Resend manual split for subject line test
+  assertions:
+    - type: output_contains
+      value: "variant-a"
+    - type: output_contains
+      value: "variant-b"
+
+- name: ab-test-winner-via-clawwrap
+  description: Declaring winner and sending to remaining routes through outbound.submit
+  steps:
+    - type: invoke
+      invoke: /ab-test-execution Declare winner and send to remaining list
+  assertions:
+    - type: output_contains
+      value: "outbound.submit"
+
+- name: ab-test-documentation-output
+  description: After monitoring, writes test results matching ab-test-setup template
+  steps:
+    - type: invoke
+      invoke: /ab-test-execution Generate A/B test results report
+  assertions:
+    - type: output_contains
+      value: "variant_a"
+    - type: output_contains
+      value: "variant_b"
+    - type: output_contains
+      value: "winner"

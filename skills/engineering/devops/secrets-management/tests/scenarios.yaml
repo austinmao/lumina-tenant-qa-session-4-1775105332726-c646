@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/devops/secrets-management
+  trigger: /secrets-management
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: secrets-management-smoke
+  description: Secrets management produces rotation and storage plan.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /secrets-management example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/secrets-management-spec.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/secrets-management-spec.md
+    sections:
+    - Vault
+    - Rotation
+    - Secret
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: secrets-management-no-scanning
+  description: Missing secret scanning in CI is flagged.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /secrets-management example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/secrets-management-spec.md
+    sections:
+    - scanning
+  - type: no_span_errors

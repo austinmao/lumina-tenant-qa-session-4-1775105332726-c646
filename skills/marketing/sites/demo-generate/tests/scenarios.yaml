@@ -1,0 +1,88 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/sites/demo-generate
+  trigger: /demo-generate
+defaults:
+  timeout: 120
+  test_mode: true
+scenarios:
+- name: demo-generate-smoke
+  description: Generate site HTML and email HTML from a brand token JSON.
+  tags:
+  - smoke
+  - p0
+  - us1
+  when:
+    invoke: /demo-generate
+    params:
+      brand_json: "{\n  \"brandName\": \"Acme Corp\",\n  \"tagline\": \"Sacred spaces\
+        \ for transformation\",\n  \"colors\": [\n    {\"hex\": \"#1a1a2e\", \"confidence\"\
+        : 0.95, \"role\": \"background\"},\n    {\"hex\": \"#c9a96e\", \"confidence\"\
+        : 0.88, \"role\": \"accent\"}\n  ],\n  \"typography\": [\n    {\"family\"\
+        : \"Cormorant Garamond\", \"weight\": \"400\", \"size\": \"16px\", \"usage\"\
+        : \"body\"}\n  ],\n  \"logo\": {\"url\": \"https://example.org/logo.svg\"\
+        , \"type\": \"svg\"}\n}\n"
+      test_mode: true
+  then:
+  - type: output_matches_schema
+    schema:
+      type: object
+      required:
+      - siteHtml
+      - emailHtml
+      properties:
+        siteHtml:
+          type: string
+          minLength: 200
+        emailHtml:
+          type: string
+          minLength: 200
+  - type: output_field_contains
+    field: siteHtml
+    contains: Acme Corp
+  - type: output_field_contains
+    field: emailHtml
+    contains: Acme Corp
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: demo-generate-brand-colors-applied
+  description: Generated output references at least one brand hex color.
+  tags:
+  - p1
+  - us1
+  when:
+    invoke: /demo-generate
+    params:
+      brand_json: "{\n  \"brandName\": \"Example Co\",\n  \"colors\": [{\"hex\": \"\
+        #ff5733\", \"confidence\": 0.9, \"role\": \"primary\"}],\n  \"typography\"\
+        : [],\n  \"logo\": null\n}\n"
+      test_mode: true
+  then:
+  - type: output_field_contains
+    field: siteHtml
+    contains: '#ff5733'
+  - &id001
+    type: no_span_errors
+- name: demo-generate-no-logo-graceful
+  description: "Works without a logo URL \u2014 no placeholder image errors."
+  tags:
+  - edge
+  - p1
+  - us1
+  when:
+    invoke: /demo-generate
+    params:
+      brand_json: "{\n  \"brandName\": \"No Logo Brand\",\n  \"colors\": [{\"hex\"\
+        : \"#333333\", \"confidence\": 0.8, \"role\": \"primary\"}],\n  \"typography\"\
+        : [],\n  \"logo\": null\n}\n"
+      test_mode: true
+  then:
+  - type: output_matches_schema
+    schema:
+      type: object
+      required:
+      - siteHtml
+      - emailHtml
+  - *id001

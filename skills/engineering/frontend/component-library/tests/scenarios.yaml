@@ -1,0 +1,50 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/frontend/component-library
+  trigger: /component-library
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: component-library-smoke
+  description: Generating docs for a component produces a markdown file with props
+    table and usage examples.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /component-library web/src/components/Button.tsx
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/component-docs/Button.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/component-docs/Button.md
+    sections:
+    - Props
+    - Usage Examples
+    - Import
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: component-library-undocumented
+  description: An undocumented component with no typed props still produces documentation
+    noting no props.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /component-library web/src/components/Divider.tsx
+    params:
+      test_mode: true
+      mock_no_props: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/component-docs/Divider.md
+    sections:
+    - no props
+  - type: no_span_errors

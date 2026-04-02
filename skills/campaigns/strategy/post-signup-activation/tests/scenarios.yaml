@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/strategy/post-signup-activation
+  trigger: /post-signup-activation
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: post-signup-activation-smoke
+  description: Design a post-signup experience to increase webinar show-up rate.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /post-signup-activation Design post-registration experience for Have a
+      Good Trip webinar
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/post-signup-plan.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/post-signup-plan.md
+    sections:
+    - confirmation
+    - show-up
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: post-signup-activation-edge-multi-step
+  description: Multi-step post-signup flow covers calendar add, SMS reminder, and
+    social proof.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /post-signup-activation Design a 3-touchpoint activation sequence after
+      retreat booking
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/post-signup-plan.md
+    sections:
+    - touchpoint
+  - type: no_span_errors

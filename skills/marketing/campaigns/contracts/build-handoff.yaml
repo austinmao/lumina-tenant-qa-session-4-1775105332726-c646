@@ -1,0 +1,16 @@
+type: handoff-contract
+pipeline: campaign
+stage: build
+from: campaign-orchestrator
+to: agents-frontend-engineer
+binding:
+  framework: "Next.js 15 App Router"
+  typescript_strict: true
+  tailwind: true
+  deploy_target: "Vercel"
+delegated:
+  component_architecture: true
+  state_management: true
+artifact_path: "memory/campaigns/{{campaign_id}}/build/"
+verification:
+  - file_exists: "memory/campaigns/{{campaign_id}}/build/"

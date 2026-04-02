@@ -1,0 +1,46 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/backend/api-design
+  trigger: /api-design
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: api-design-smoke
+  description: Design a REST API with endpoints, pagination, and error handling.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /api-design Design a REST API for a blog with posts and comments
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/api-design-spec.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/api-design-spec.md
+    sections:
+    - endpoint
+    - pagination
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: api-design-edge-versioning
+  description: API design includes versioning strategy when multiple consumers exist.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /api-design Design a versioned API for a mobile app with backward compatibility
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/api-design-spec.md
+    sections:
+    - version
+  - type: no_span_errors

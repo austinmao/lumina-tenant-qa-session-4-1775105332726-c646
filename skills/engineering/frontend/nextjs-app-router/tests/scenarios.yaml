@@ -1,0 +1,54 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/frontend/nextjs-app-router
+  trigger: /nextjs-app-router
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: nextjs-app-router-smoke
+  description: Next.js patterns produce server component code.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /nextjs-app-router example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/nextjs-app-router-spec.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/nextjs-app-router-spec.md
+    sections:
+    - Server Component
+    - Route
+    - Streaming
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - JSON.stringify
+    - loading.tsx
+    - error.tsx
+    - default.tsx
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: nextjs-client-in-server
+  description: Hooks in Server Components are flagged.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /nextjs-app-router example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/nextjs-app-router-spec.md
+    sections:
+    - use client
+  - type: no_span_errors

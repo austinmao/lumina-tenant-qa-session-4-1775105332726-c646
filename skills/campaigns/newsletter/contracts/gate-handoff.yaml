@@ -1,0 +1,33 @@
+type: handoff-contract
+pipeline: newsletter
+stage: gate
+from: newsletter-orchestrator
+to: agents-marketing-brand
+
+prior_work:
+  draft: "memory/drafts/{{date}}-sunday-service.md"
+
+binding:
+  gate_checks:
+    - "kill list"
+    - "extended kill list"
+    - "link audit"
+    - "Wise Alchemist checklist"
+    - "Seth Godin filter"
+    - "post-click consistency"
+    - "voice-first test"
+  gate_status_field: "gate_status"
+  pass_value: "PASSED"
+
+delegated:
+  severity_assessment: true
+  flag_wording: true
+
+artifact_path: "memory/drafts/{{date}}-sunday-service.md"
+
+verification:
+  - file_exists: "memory/drafts/{{date}}-sunday-service.md"
+  - contains: "gate_status: PASSED"
+  - contains: "kill list"
+  - contains: "Godin filter"
+  - contains: "Wise Alchemist"

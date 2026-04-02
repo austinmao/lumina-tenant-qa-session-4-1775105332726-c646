@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/frontend/auth-frontend
+  trigger: /auth-frontend
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: auth-frontend-smoke
+  description: Auth frontend produces login flow components.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /auth-frontend example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/auth-frontend-spec.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/auth-frontend-spec.md
+    sections:
+    - OAuth
+    - Session
+    - Login
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: auth-frontend-localstorage
+  description: Token in localStorage is flagged as XSS risk.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /auth-frontend example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/auth-frontend-spec.md
+    sections:
+    - XSS
+  - type: no_span_errors

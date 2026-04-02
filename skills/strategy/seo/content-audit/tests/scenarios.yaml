@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/content-audit
+  trigger: /content-audit
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: content-audit-smoke
+  description: Content audit produces quality and E-E-A-T evaluation.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /content-audit example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/content-audit-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/content-audit-report.md
+    sections:
+    - E-E-A-T
+    - Quality
+    - Recommendation
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: content-audit-thin
+  description: Thin content flagged for expansion.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /content-audit example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/content-audit-report.md
+    sections:
+    - thin
+  - type: no_span_errors

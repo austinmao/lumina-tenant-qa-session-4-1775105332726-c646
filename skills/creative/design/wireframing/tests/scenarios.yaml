@@ -1,0 +1,60 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/design/wireframing
+  trigger: /wireframing
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: wireframing-smoke
+  description: Invoking wireframing produces a wireframe with layout structure, user
+    flow, and interaction specs.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-a
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /wireframing retreat application page
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/wireframe-spec.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/wireframe-spec.md
+    sections:
+    - Wireframe
+    - User Flow
+    - Interaction
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: wireframing-no-blueprint
+  description: Invoking without a blueprint still produces a mobile-first wireframe
+    with content zones.
+  tags:
+  - edge
+  - p1
+  given:
+  - type: invoke
+    command: /site tenant-a
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /wireframing generic signup page without blueprint
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/wireframe-spec.md
+    timeout: 90
+  - type: artifact_contains
+    path: memory/reports/wireframe-spec.md
+    sections:
+    - Mobile
+  - type: no_span_errors

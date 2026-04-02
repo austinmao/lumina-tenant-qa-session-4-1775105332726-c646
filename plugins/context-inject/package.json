@@ -1,0 +1,11 @@
+{
+  "name": "context-inject",
+  "version": "1.0.0",
+  "description": "Injects SOUL.md + IDENTITY.md into sub-agent sessions and verifies handoff contracts",
+  "main": "index.ts",
+  "type": "module",
+  "openclaw": {
+    "type": "plugin",
+    "hooks": ["prepareSubagentSpawn", "onSubagentEnded"]
+  }
+}

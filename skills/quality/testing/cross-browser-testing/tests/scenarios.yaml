@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/testing/cross-browser-testing
+  trigger: /cross-browser-testing
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: cross-browser-testing-smoke
+  description: Accessibility audit produces WCAG 2.2 compliance report.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /cross-browser-testing example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/cross-browser-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/cross-browser-report.md
+    sections:
+    - WCAG
+    - Contrast
+    - Keyboard
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: cross-browser-color-only
+  description: Color as sole indicator is flagged.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /cross-browser-testing example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/cross-browser-report.md
+    sections:
+    - color
+  - type: no_span_errors

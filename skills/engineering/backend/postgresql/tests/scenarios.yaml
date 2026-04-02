@@ -1,0 +1,54 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/backend/postgresql
+  trigger: /postgresql
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: postgresql-smoke
+  description: Design a PostgreSQL schema for a given domain model with proper types
+    and indexes.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /postgresql Design a users table with email, name, created_at, and role
+      fields
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/postgresql-schema.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/postgresql-schema.md
+    sections:
+    - CREATE TABLE
+    - TIMESTAMPTZ
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - EXCLUDED.column
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: postgresql-edge-serial
+  description: Using deprecated SERIAL type triggers a recommendation to use GENERATED
+    ALWAYS AS IDENTITY.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /postgresql Review this schema CREATE TABLE orders (id SERIAL PRIMARY
+      KEY)
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/postgresql-schema.md
+    sections:
+    - GENERATED ALWAYS AS IDENTITY
+  - type: no_span_errors

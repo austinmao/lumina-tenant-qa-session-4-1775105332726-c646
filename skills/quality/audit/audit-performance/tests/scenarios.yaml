@@ -1,0 +1,56 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/website/audit-performance
+  trigger: /audit-performance
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: perf-smoke
+  description: Invoking performance audit produces a Core Web Vitals report with issue
+    impact rankings.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /audit-performance --page /
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/performance-audit.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/performance-audit.md
+    sections:
+    - Performance Audit
+    - Core Web Vitals
+    - LCP
+    - CLS
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: perf-no-site
+  description: Invoking without an active site does not produce a performance report.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: artifact_absent
+    path: memory/site-context.yaml
+  when:
+    invoke: /audit-performance --page /
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: http.get
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

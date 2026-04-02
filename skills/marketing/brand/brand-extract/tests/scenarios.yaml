@@ -1,0 +1,89 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/brand/brand-extract
+  trigger: /brand-extract
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: brand-extract-smoke
+  description: Extract brand tokens from HTML and return valid JSON with required
+    keys.
+  tags:
+  - smoke
+  - p0
+  - us1
+  when:
+    invoke: /brand-extract
+    params:
+      html: <html><head><title>Acme Corp</title><style>body{background:#1a1a2e;font-family:'Cormorant
+        Garamond',serif;color:#f5f0e8}</style></head><body><h1>Acme Corp</h1><img
+        src='https://example.org/logo.svg'></body></html>
+      url: https://example.org
+      test_mode: true
+  then:
+  - type: output_matches_schema
+    schema:
+      type: object
+      required:
+      - brandName
+      - colors
+      - typography
+      properties:
+        brandName:
+          type: string
+          minLength: 1
+        colors:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+            - hex
+        typography:
+          type: array
+          minItems: 1
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: brand-extract-sparse-html
+  description: Returns partial result (not crash) when HTML has minimal brand signals.
+  tags:
+  - edge
+  - p1
+  - us1
+  when:
+    invoke: /brand-extract
+    params:
+      html: <html><body><p>Hello</p></body></html>
+      url: https://example.com
+      test_mode: true
+  then:
+  - type: output_matches_schema
+    schema:
+      type: object
+      required:
+      - brandName
+      properties:
+        brandName:
+          type: string
+  - &id001
+    type: no_span_errors
+- name: brand-extract-logo-detection
+  description: Logo URL is returned when an og:image or img tag is present.
+  tags:
+  - p1
+  - us1
+  when:
+    invoke: /brand-extract
+    params:
+      html: <html><head><meta property='og:image' content='https://example.com/logo.png'></head><body><h1>Example
+        Co</h1></body></html>
+      url: https://example.com
+      test_mode: true
+  then:
+  - type: output_contains
+    keys:
+    - logo
+  - *id001

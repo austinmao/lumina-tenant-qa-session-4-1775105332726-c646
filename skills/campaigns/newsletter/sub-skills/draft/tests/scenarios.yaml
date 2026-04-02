@@ -1,0 +1,51 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/email/newsletter/sub-skills/draft
+  trigger: /newsletter-draft
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: draft-smoke
+  description: Draft generation writes the complete newsletter artifact with subject
+    lines and brand gate checklist.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /newsletter-draft Sunday Service from a complete content brief
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/{{today}}-sunday-service.md
+    timeout: 180
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/{{today}}-sunday-service.md
+    sections:
+    - Chain-of-Draft Log
+    - Subject Lines
+    - Preview Text
+    - Body
+    - Brand Gate
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: draft-rejects-non-newsletter-prompt
+  description: Draft generation refuses prompts that are not newsletter work.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /newsletter-draft contractor reimbursement reminder
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

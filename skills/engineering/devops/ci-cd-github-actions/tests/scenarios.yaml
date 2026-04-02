@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/devops/ci-cd-github-actions
+  trigger: /ci-cd-github-actions
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: ci-cd-github-actions-smoke
+  description: CI/CD produces a GitHub Actions workflow file.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /ci-cd-github-actions example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/ci-cd-workflow-spec.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/ci-cd-workflow-spec.md
+    sections:
+    - Workflow
+    - Test
+    - Deploy
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: ci-cd-no-cache
+  description: Workflow without caching strategy is flagged.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /ci-cd-github-actions example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/ci-cd-workflow-spec.md
+    sections:
+    - cache
+  - type: no_span_errors

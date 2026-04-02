@@ -1,0 +1,94 @@
+# Department Packs — Agent groups for onboarding interview
+# Replaces hardcoded DEPARTMENT_PACKS in paperclip-seeder.ts
+# Read at runtime by: paperclip-seeder.ts, direct-interview.ts, clawinterview-client.ts
+
+packs:
+  starter:
+    label: "Starter Team"
+    description: "Essential agents for any company — leadership, engineering, content, and QA"
+    agents:
+      - executive/ceo
+      - executive/cto
+      - executive/cmo
+      - engineering/backend-engineer
+      - engineering/frontend-engineer
+      - content/copywriter
+      - quality/qa-engineer
+      - engineering/devops-engineer
+
+  executive:
+    label: "Executive Team"
+    description: "C-suite leadership — CEO, CTO, CMO, CCO"
+    agents:
+      - executive/ceo
+      - executive/cto
+      - executive/cmo
+      - executive/cco
+
+  engineering:
+    label: "Engineering Team"
+    description: "Full engineering department — backend, frontend, DevOps, email"
+    agents:
+      - engineering/backend-engineer
+      - engineering/frontend-engineer
+      - engineering/devops-engineer
+      - engineering/email-engineer
+
+  marketing:
+    label: "Marketing Team"
+    description: "Full marketing department — brand, content, campaigns, funnels, webinars"
+    agents:
+      - executive/cmo
+      - creative/creative-director
+      - content/copywriter
+      - marketing/brand
+      - marketing/brand-designer
+      - marketing/campaign-orchestrator
+      - marketing/copywriter
+      - marketing/email-engineer
+      - marketing/funnel
+      - marketing/webinar
+      - campaigns/campaign-orchestrator
+      - strategy/seo-geo-strategist
+
+  sales:
+    label: "Sales Team"
+    description: "Full sales department — director, coaches, concierge, enrollment, nurture"
+    agents:
+      - sales/director
+      - sales/coach
+      - sales/concierge
+      - sales/enrollment
+      - sales/lead-nurture
+      - sales/pricing-yield
+
+  website:
+    label: "Website Team"
+    description: "Website design and development — frontend, orchestration, visual design"
+    agents:
+      - website/orchestrator
+      - website/frontend-engineer
+      - website/visual-designer
+
+  operations:
+    label: "Operations Team"
+    description: "Operations coordination, knowledge management, and content curation"
+    agents:
+      - operations/coordinator
+      - operations/knowledge-sync
+      - corpus/transcript-curator
+
+  strategy:
+    label: "Strategy & Analytics"
+    description: "Analytics engineering and SEO/GEO strategy"
+    agents:
+      - strategy/analytics-engineer
+      - strategy/seo-geo-strategist
+
+  platform:
+    label: "Platform & Infrastructure"
+    description: "Platform tools — error coordination, workflow orchestration, scaffolding"
+    agents:
+      - platform/error-coordinator
+      - platform/workflow-orchestrator
+      - scaffold/interviewer

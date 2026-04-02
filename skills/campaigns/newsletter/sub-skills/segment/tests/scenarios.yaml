@@ -1,0 +1,50 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/email/newsletter/sub-skills/segment
+  trigger: /newsletter-segment
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: segment-smoke
+  description: Segment resolution writes the send list counts and suppression log
+    before brief assembly.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /newsletter-segment Sunday Service
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/{{today}}-sunday-service-segment.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/{{today}}-sunday-service-segment.md
+    sections:
+    - Send List Counts
+    - Per-Stage Overrides
+    - Suppression Log
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: segment-rejects-invalid-list-source
+  description: Segment resolution refuses invalid list sources before any send list
+    is built.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /newsletter-segment from an invalid subscriber source
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

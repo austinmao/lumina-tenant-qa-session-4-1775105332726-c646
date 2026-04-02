@@ -1,0 +1,78 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/sites/web-fetch
+  trigger: /web-fetch
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: web-fetch-smoke
+  description: Fetch a public URL and return HTML with brand signals.
+  tags:
+  - smoke
+  - p0
+  - us1
+  when:
+    invoke: /web-fetch
+    params:
+      url: https://example.org
+      test_mode: true
+  then:
+  - type: output_contains
+    keys:
+    - html
+    description: Output must include an 'html' key
+  - type: output_matches_schema
+    schema:
+      type: object
+      required:
+      - html
+      properties:
+        html:
+          type: string
+          minLength: 100
+        images:
+          type: array
+  - &id001
+    type: no_span_errors
+  - &id002
+    type: tool_not_invoked
+    tool: shell.execute
+- name: web-fetch-invalid-url
+  description: Invalid URL returns a structured error, not a crash.
+  tags:
+  - edge
+  - p1
+  - us1
+  when:
+    invoke: /web-fetch
+    params:
+      url: not-a-valid-url
+      test_mode: true
+  then:
+  - type: output_contains
+    keys:
+    - error
+    description: Output must include an 'error' key for invalid URLs
+  - type: no_span_errors
+- name: web-fetch-js-rendered
+  description: JS-rendered site still returns meaningful HTML.
+  tags:
+  - smoke
+  - p1
+  - us1
+  when:
+    invoke: /web-fetch
+    params:
+      url: https://stripe.com
+      test_mode: true
+  then:
+  - type: output_contains
+    keys:
+    - html
+  - type: output_field_min_length
+    field: html
+    min_length: 200
+  - *id001
+  - *id002

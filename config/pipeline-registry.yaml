@@ -1,0 +1,98 @@
+version: "1.0.0"
+
+defaults:
+  confidence_threshold: 0.7
+  priority: normal
+
+routes:
+  - classification: website-build
+    description: "Website build orchestration — intake, discovery, synthesis, build"
+    keywords:
+      - "build"
+      - "website"
+      - "homepage"
+      - "landing page"
+      - "site"
+      - "web page"
+    labels:
+      - "website"
+      - "build"
+    pipeline_config: "pipelines/website/website-single-page-native.yaml"
+    required_input_fields:
+      - "title"
+      - "description"
+    priority_signals:
+      - pattern: "urgent|asap|deadline|blocking"
+        source: description
+        boost: high
+      - pattern: "blocked"
+        source: labels
+        boost: critical
+
+  - classification: e2e-test
+    description: "E2E test pipeline for native orchestration validation"
+    keywords:
+      - "e2e"
+      - "test"
+      - "native orchestration"
+      - "validation"
+    labels:
+      - "e2e"
+      - "test"
+    pipeline_config: "pipelines/e2e-native-orchestration.yaml"
+    required_input_fields:
+      - "title"
+      - "description"
+    default_priority: normal
+
+  - classification: website-build-native
+    description: "Full 34-stage website build with native agent dispatch"
+    keywords:
+      - "build"
+      - "website"
+      - "native"
+      - "full pipeline"
+    labels:
+      - "website"
+      - "native"
+    pipeline_config: "pipelines/website/website-single-page-native.yaml"
+    required_input_fields:
+      - "title"
+      - "description"
+    priority_signals:
+      - pattern: "urgent|asap|deadline|blocking"
+        source: description
+        boost: high
+
+  - classification: campaign
+    description: "Marketing campaign orchestration — copy, design, build, deploy"
+    keywords:
+      - "campaign"
+      - "email"
+      - "newsletter"
+      - "launch"
+      - "sequence"
+    labels:
+      - "campaign"
+      - "marketing"
+    pipeline_config: "pipelines/campaign.yaml"
+    required_input_fields:
+      - "title"
+      - "description"
+    priority_signals:
+      - pattern: "launch date|deadline|time-sensitive"
+        source: description
+        boost: high
+
+  - classification: onboarding
+    description: "Customer onboarding pipeline"
+    keywords:
+      - "onboard"
+      - "new customer"
+      - "setup"
+      - "provision"
+    labels:
+      - "onboarding"
+    pipeline_config: "pipelines/onboarding.yaml"
+    required_input_fields:
+      - "title"

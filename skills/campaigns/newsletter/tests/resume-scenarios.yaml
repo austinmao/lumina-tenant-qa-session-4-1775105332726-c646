@@ -1,0 +1,52 @@
+version: "1.0"
+target:
+  type: skill
+  path: skills/marketing/email/newsletter
+  trigger: /send-newsletter
+
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+
+scenarios:
+  - name: newsletter-resume-after-draft-completed
+    description: "Pre-seeded state with draft completed + gate pending. Resume skips draft, spawns brand guardian."
+    tags: [resume, p0]
+    given:
+      - type: file_present
+        path: memory/pipelines/newsletter-test-resume/state.yaml
+    when:
+      invoke: "/send-newsletter Sunday Service"
+      params:
+        test_mode: true
+    then:
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "sessions_spawn.*agents-marketing-copywriter"
+        absent: true
+      - type: delegation_occurred
+        from: newsletter-orchestrator
+        to: agents-marketing-brand
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+      - type: tool_not_called
+        tool: outbound.submit
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+  - name: newsletter-resume-stops-before-deliver-without-approval
+    description: "Gate completed, deliver pending with approval_guard. Resume resets guard and returns escalate."
+    tags: [resume, guard, p0]
+    given:
+      - type: file_present
+        path: memory/pipelines/newsletter-test-guard/state.yaml
+    when:
+      invoke: "/send-newsletter Sunday Service"
+      params:
+        test_mode: true
+    then:
+      - type: tool_not_called
+        tool: outbound.submit
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"

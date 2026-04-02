@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/email/email-sequences
+  trigger: /email-sequences
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: email-sequences-smoke
+  description: Write a full welcome email sequence with subject lines and body copy.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /email-sequences Write a 5-email soap opera welcome sequence for new retreat
+      inquiries
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/email-sequence-draft.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/email-sequence-draft.md
+    sections:
+    - Subject
+    - Email 1
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: email-sequences-edge-reengagement
+  description: Re-engagement sequence handles inactive subscribers with win-back copy.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /email-sequences Write a re-engagement sequence for subscribers inactive
+      for 90 days
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/email-sequence-draft.md
+    sections:
+    - re-engage
+  - type: no_span_errors

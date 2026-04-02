@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/audit/security-audit
+  trigger: /security-audit
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: security-audit-smoke
+  description: Security audit checks CSP headers and XSS vectors.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /security-audit example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/security-audit-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/security-audit-report.md
+    sections:
+    - CSP
+    - HTTPS
+    - Security Headers
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: security-audit-no-csp
+  description: Missing CSP header is a high-severity finding.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /security-audit example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/security-audit-report.md
+    sections:
+    - missing
+  - type: no_span_errors

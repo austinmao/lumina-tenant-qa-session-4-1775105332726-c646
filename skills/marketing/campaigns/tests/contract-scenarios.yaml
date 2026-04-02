@@ -1,0 +1,99 @@
+version: "1.0"
+target:
+  type: skill
+  path: skills/marketing/campaigns/workflow
+  trigger: /generate-campaign
+
+defaults:
+  timeout: 2400
+  test_mode: true
+  poll_interval: 10
+
+scenarios:
+  # T029d: Campaign Phase 2 delegation produces handoff contracts and specialist artifacts pass verification
+  - name: campaign-phase2-contracts-smoke
+    description: "Campaign Phase 2 delegation produces handoff contracts for each specialist (copy, HTML, design, build) and each specialist's artifact passes its contract verification assertions."
+    tags: [contract, pipeline, p0]
+
+    when:
+      invoke: /generate-campaign webinar nurture campaign for Feel Fully Alive, stage the assets with contract-aware delegation, and wait for Austin approval before any delivery or record creation
+      params:
+        test_mode: true
+
+    then:
+      # Copy handoff: copywriter was delegated to
+      - type: delegation_occurred
+        from: campaign-orchestrator
+        to: agents-marketing-copywriter
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+      # Copy artifact exists and passes contract verification
+      - type: artifact_exists
+        path: memory/campaigns/{{today}}-feel-fully-alive/copy.md
+        timeout: 900
+        updated_after: "{{run_started_at}}"
+
+      - type: artifact_contains
+        path: memory/campaigns/{{today}}-feel-fully-alive/copy.md
+        sections: [Content Type, Persona Applied, Draft Stage]
+
+      - type: artifact_absent_words
+        path: memory/campaigns/{{today}}-feel-fully-alive/copy.md
+        words:
+          - Sacred
+          - Miracle
+          - Therapy
+          - Spirit Guide
+          - Breakthrough
+          - Transformational
+
+      # HTML handoff: email engineer was delegated to
+      - type: delegation_occurred
+        from: campaign-orchestrator
+        to: agents-marketing-email-engineer
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+      # HTML artifact exists and passes contract verification
+      - type: artifact_exists
+        path: memory/campaigns/{{today}}-feel-fully-alive/email.html
+        timeout: 900
+        updated_after: "{{run_started_at}}"
+
+      - type: artifact_contains
+        path: memory/campaigns/{{today}}-feel-fully-alive/email.html
+        sections: ["<!DOCTYPE"]
+
+      # No delivery or record creation before approval
+      - type: tool_not_called
+        tool: resend.send
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "/api/events|/api/offers|/api/campaigns"
+        absent: true
+
+  - name: campaign-contract-violation-halts
+    description: "When a campaign specialist's artifact fails contract verification (e.g., missing required section), the orchestrator halts the pipeline before progressing to the next phase."
+    tags: [contract, negative, p0]
+
+    when:
+      invoke: /generate-campaign webinar nurture for Feel Fully Alive. After copywriter produces copy, inject a violation by removing the 'Content Type' header, then run contract verification. Expect pipeline halt.
+      params:
+        test_mode: true
+        inject_violation: "remove_section:Content Type"
+
+    then:
+      # Email engineer should NOT have been spawned after copy verification fails
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "sessions_spawn.*agents-marketing-email-engineer"
+        absent: true
+
+      - type: tool_not_called
+        tool: resend.send
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"

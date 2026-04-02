@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/design/responsive-design
+  trigger: /responsive-design
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: responsive-design-smoke
+  description: Invoking responsive-design produces a responsive layout spec with breakpoint
+    definitions and fluid typography.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /responsive-design hero section for retreat landing page
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/responsive-design-spec.md
+    timeout: 60
+  - type: artifact_contains
+    path: memory/reports/responsive-design-spec.md
+    sections:
+    - Breakpoint
+    - clamp
+    - mobile
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: responsive-design-no-site-context
+  description: Invoking without site context does not produce a layout spec.
+  tags:
+  - negative
+  - p1
+  given:
+  - type: artifact_absent
+    path: memory/site-context.yaml
+  when:
+    invoke: /responsive-design card grid layout
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/responsive-design-spec.md
+    absent: true
+  - type: no_span_errors

@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/geo/geo-llmstxt
+  trigger: /geo-llmstxt
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: geo-llmstxt-smoke
+  description: llms.txt skill produces analysis or generation output.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /geo-llmstxt example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/geo-llmstxt-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/geo-llmstxt-report.md
+    sections:
+    - llms.txt
+    - Completeness
+    - Accuracy
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: geo-llmstxt-generate
+  description: llms.txt generation produces valid markdown.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /geo-llmstxt example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/geo-llmstxt-report.md
+    sections:
+    - Docs
+  - type: no_span_errors

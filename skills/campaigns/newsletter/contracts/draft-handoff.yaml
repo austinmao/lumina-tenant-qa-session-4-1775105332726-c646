@@ -1,0 +1,55 @@
+type: handoff-contract
+pipeline: newsletter
+stage: draft
+from: newsletter-orchestrator
+to: agents-marketing-copywriter
+
+prior_work:
+  trend_brief: "memory/logs/trend-briefs/{{date}}.md"
+  content_brief: "memory/drafts/{{date}}-sunday-service-brief.md"
+
+binding:
+  persona: "Seth Godin x Wise Alchemist"
+  sign_off: "With love, Austin"
+  output_schema: "chain-of-draft"
+  required_sections:
+    - "Step A"
+    - "Step B"
+    - "Step C"
+    - "Step D"
+    - "opening_reflection"
+    - "teaching"
+    - "cta"
+    - "signature"
+  prohibited_words:
+    - Sacred
+    - Miracle
+    - Therapy
+    - Spirit Guide
+    - Breakthrough
+    - Transformational
+  prohibited_personas:
+    - Ann Handley
+    - Gary Vaynerchuk
+  max_body_words: 500
+
+delegated:
+  hook_selection: true
+  word_choice: true
+  teaching_angle: true
+  sentence_craft: true
+  paragraph_structure: true
+
+artifact_path: "memory/drafts/{{date}}-sunday-service.md"
+
+verification:
+  - file_exists: "memory/drafts/{{date}}-sunday-service.md"
+  - contains: "Step A"
+  - contains: "Step B"
+  - contains: "Step C"
+  - contains: "Step D"
+  - contains: "With love, Austin"
+  - not_contains: "Ann Handley"
+  - not_contains: "Sacred"
+  - not_contains: "Miracle"
+  - word_count_max: 500

@@ -1,0 +1,63 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/platform/governance/clawwrap
+  trigger: /clawwrap
+defaults:
+  timeout: 60
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: smoke-basic
+  description: Smoke coverage for platform/governance/clawwrap
+  tags:
+  - smoke
+  - boundary-skill
+  given:
+  - type: file_absent
+    path: memory/drafts/platform-governance-clawwrap-artifact.md
+  when:
+    invoke: /clawwrap
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/platform-governance-clawwrap-artifact.md
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - outbound.submit
+    - targets.yaml
+    - email.send
+    - slack.post
+    - dm.send_text
+    - mailchimp.send_campaign
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-out-of-scope
+  description: Negative coverage for unsupported behavior
+  tags:
+  - negative
+  - boundary-skill
+  when:
+    invoke: /clawwrap do something forbidden
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: send_message
+  - &id001
+    type: no_span_errors
+- name: permission-guardrails
+  description: Permission boundaries remain intact
+  tags:
+  - permission
+  when:
+    invoke: /clawwrap
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: external_write
+  - *id001

@@ -1,0 +1,177 @@
+skill_id: platform/governance/skill-adoption
+version: '1.0'
+scenarios:
+- id: tier-a-skips-scanners
+  name: tier-a-skips-scanners
+  description: 'When the query matches a Tier A publisher (openclaw/lumina), parallel-scan
+    is skipped and the skill is installed directly from the local workspace. Scanner
+    agents are never dispatched and scan-results.yaml is empty.
+
+    '
+  tags:
+  - tier_a
+  - smoke
+  - security
+  inputs:
+    query: lumina/resend
+    skill_url: ''
+    scan_mode: efficiency
+  expected:
+  - state_file: meta.yaml
+    contains:
+      tier: A
+  - stage: parallel-scan
+    behavior: skipped
+    reason: tier == A
+  - state_file: decision.yaml
+    contains:
+      verdict: install
+      scanner_summary: {}
+  - state_file: scan-results.yaml
+    behavior: absent_or_empty
+  - outcome: installed
+- id: smoke-prereq-fail
+  name: smoke-prereq-fail
+  description: 'When SNYK_TOKEN is not set, validate-prereqs exits non-zero and writes
+    stage_failed: init to meta.yaml. The pipeline halts before search. No network
+    calls are made to the skills marketplace.
+
+    '
+  tags:
+  - smoke
+  - prereq
+  - security
+  inputs:
+    query: stripe integration
+    skill_url: ''
+    scan_mode: efficiency
+  env_overrides:
+    SNYK_TOKEN: ''
+  expected:
+  - state_file: meta.yaml
+    contains:
+      stage_failed: init
+  - stage: search
+    behavior: not_reached
+  - outcome: failed
+    reason: missing SNYK_TOKEN
+- id: blocked-clawhavoc-pattern
+  name: blocked-clawhavoc-pattern
+  description: 'A SKILL.md containing the ClawHavoc C2 IP address 91.92.242.30 is
+    blocked at the pre-filter stage (download step). prefilter.yaml status is set
+    to ''blocked'' and the pipeline halts before reaching parallel-scan.
+
+    '
+  tags:
+  - security
+  - clawhavoc
+  - block
+  inputs:
+    query: test-clawhavoc
+    skill_url: ''
+    scan_mode: efficiency
+  fixture: skills/platform/governance/skill-adoption/tests/fixtures/clawhavoc-skill.md
+  expected:
+  - state_file: prefilter.yaml
+    contains:
+      status: blocked
+      matched_pattern: 91.92.242.30
+  - stage: parallel-scan
+    behavior: not_reached
+  - outcome: blocked
+    reason: ClawHavoc toxic pattern detected in pre-filter
+- id: warn-triggers-rebuild
+  name: warn-triggers-rebuild
+  description: "A SKILL.md with filesystem:write + network:true from an untrusted\
+    \ publisher causes the permission scanner to return a WARN verdict. decide() applies\
+    \ Rule C: ANY warn + untrusted publisher \u2192 verdict: rebuild. install-or-rebuild\
+    \ invokes 'skill rebuild' and writes rebuild-diff.yaml. The sanitized skill is\
+    \ installed.\n"
+  tags:
+  - security
+  - permission
+  - rebuild
+  inputs:
+    query: test-overpermissioned
+    skill_url: ''
+    scan_mode: quality
+  fixture: skills/platform/governance/skill-adoption/tests/fixtures/overpermissioned-skill.md
+  expected:
+  - state_file: scan-results.yaml
+    contains:
+      permission-scan:
+        status: warn
+        findings:
+        - code: exfil-risk
+          severity: warn
+  - state_file: decision.yaml
+    contains:
+      verdict: rebuild
+  - state_file: rebuild-diff.yaml
+    behavior: exists
+  - outcome: installed
+    via: rebuild
+- id: e2e-stripe-install
+  name: e2e-stripe-install
+  description: 'Full pipeline from marketplace search (''stripe integration'') through
+    security scan, approval gate, and install to skills/. Requires SNYK_TOKEN and
+    OPENCLAW_GATEWAY_TOKEN to be set. Agent Squad dispatches 4 scanners in parallel.
+    scan-results.yaml contains all 4 scanner keys. A clean verdict triggers direct
+    install (no rebuild). paperclip-ref.yaml is written after governance registration.
+
+    '
+  tags:
+  - e2e
+  - marketplace
+  - integration
+  inputs:
+    query: stripe integration
+    skill_url: ''
+    scan_mode: efficiency
+  requires_env:
+  - SNYK_TOKEN
+  - OPENCLAW_GATEWAY_TOKEN
+  expected:
+  - state_file: selection.yaml
+    contains:
+      install_count_gte: 10000
+  - state_file: prefilter.yaml
+    contains:
+      status: clean
+  - state_file: scan-results.yaml
+    has_keys:
+    - snyk-scan
+    - permission-scan
+    - config-scan
+    - injection-scan
+  - state_file: decision.yaml
+    contains:
+      verdict: install
+  - target_path: skills/**/*.md
+    behavior: exists
+  - state_file: paperclip-ref.yaml
+    behavior: exists_or_skipped
+  - outcome: installed
+- name: delta-smoke
+  description: Focused delta review for extend mode
+  tags:
+  - delta
+  when:
+    invoke: /skill-adoption
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/platform-governance-skill-adoption-artifact.md
+assertions_config:
+  timeout_seconds: 300
+  partial_success: true
+  approval_gate_auto_approve: true
+target:
+  type: skill
+  path: skills/platform/governance/skill-adoption
+  trigger: /skill-adoption
+defaults:
+  timeout: 45
+  test_mode: true
+  poll_interval: 3

@@ -1,0 +1,69 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/website/site-deploy
+  trigger: /deploy-site
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: deploy-reads-site-context
+  description: Invoking /deploy-site reads the vercel project and site_dir from site-context.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /deploy-site preview
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/site-context.yaml
+    sections:
+    - vercel.project
+    - site_dir
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: deploy-requires-approval
+  description: Deployment must not execute without Austin approval.
+  tags:
+  - permission
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /deploy-site production
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: shell.execute
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - &id001
+    type: no_span_errors
+- name: deploy-requires-token
+  description: Fails gracefully when VERCEL_TOKEN env var is not set.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: env_unset
+    var: VERCEL_TOKEN
+  when:
+    invoke: /deploy-site preview
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: shell.execute
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - *id001

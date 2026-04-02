@@ -1,0 +1,25 @@
+{
+  "id": "clawpipe",
+  "name": "ClawPipe Gateway Bridge",
+  "description": "Node.js gateway bridge for the ClawPipe Python pipeline orchestration engine. Registers clawpipe tool and delegates to Python CLI via child_process.",
+  "version": "0.5.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "repoRoot": {
+        "type": "string",
+        "minLength": 1
+      },
+      "pythonBin": {
+        "type": "string",
+        "minLength": 1
+      },
+      "timeoutMs": {
+        "type": "integer",
+        "minimum": 1000,
+        "default": 60000
+      }
+    }
+  }
+}

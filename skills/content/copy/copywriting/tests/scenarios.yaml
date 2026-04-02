@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/content/copy/copywriting
+  trigger: /copywriting
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: copywriting-smoke
+  description: Invoking copywriting produces email copy with subject line options
+    and a CTA.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /copywriting write a single email for the spring retreat announcement
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/copywriting-draft.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/copywriting-draft.md
+    sections:
+    - Subject
+    - CTA
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: copywriting-subject-line-curiosity-gap
+  description: Subject lines use curiosity gap technique with an open information
+    gap.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /copywriting write 5 subject line options for retreat invitation email
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/copywriting-draft.md
+    sections:
+    - Subject
+  - type: no_span_errors

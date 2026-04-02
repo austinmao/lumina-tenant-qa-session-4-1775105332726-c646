@@ -1,0 +1,68 @@
+competitors:
+  - name: High Performance Institute
+    url: https://www.highperformanceinstitute.com/
+    strengths:
+      - "Design patterns: modular sectioned landing layout (offer blocks + habits framework) that scans quickly and funnels users into one of several conversion paths."
+      - "Messaging approach: performance-outcome framing ('turning high potential into high performers') with practical mindset/habit language."
+      - "CTAs: repeated 'Learn More' buttons across 1:1 coaching, free group coaching, certification, and assessments create low- and high-commitment entry points."
+      - "Trust signals: heavy founder authority stack (NYT best-seller, Forbes/Oprah/Larry King mentions, follower counts)."
+      - "Content structure & SEO positioning: broad topical architecture around high performance/coaching terms supports transactional and informational intent."
+    weaknesses:
+      - "Multi-offer architecture can diffuse attention vs. one clear flagship conversion path."
+      - "Brand voice is authority-heavy and may feel less emotionally specific to users trying to stop one concrete behavior."
+      - "Generic CTA copy ('Learn More') is weaker than outcome-driven CTA variants."
+
+  - name: Mindvalley
+    url: https://www.mindvalley.com/
+    strengths:
+      - "Design patterns: polished, app-first visual system with press-featured hero, social proof blocks, and recurring membership CTAs."
+      - "Messaging approach: aspirational transformation narrative ('A better you every day') across life domains."
+      - "CTAs: primary recurring 'Become a Member' CTA keeps intent clear and reinforces subscription model."
+      - "Trust signals: media logos, testimonials, case stories, and teacher/program volume metrics."
+      - "Content structure & SEO positioning: large program library creates wide keyword surface area across growth, wellness, and mindset topics."
+    weaknesses:
+      - "Messaging is broad and can feel less focused for users searching a specific cessation outcome."
+      - "High-level aspirational copy risks sounding generic without immediate problem-agitation specificity."
+      - "Membership framing may trigger price/commitment friction for users seeking a short targeted intervention."
+
+  - name: James Clear (Atomic Habits ecosystem)
+    url: https://jamesclear.com/habits
+    strengths:
+      - "Design patterns: content-first long-form guide pages with embedded lead magnet capture and minimal distraction."
+      - "Messaging approach: evidence-based, practical, and specific ('1% better every day', break bad habits/build good habits)."
+      - "CTAs: highly relevant lead magnet CTA (free chapter via email) aligned with page intent."
+      - "Trust signals: bestseller status, large review volume, expert endorsement quotes, and clear intellectual framework."
+      - "Content structure & SEO positioning: strong informational SEO moat via deep evergreen habit guides and internal topic clustering."
+    weaknesses:
+      - "Lower urgency for immediate purchase/action compared with event or summit funnels."
+      - "Text-dense pages may underperform for visitors preferring interactive/video-first experiences."
+      - "More education-centric than intensive coaching/intervention conversion style."
+
+  - name: Mel Robbins
+    url: https://www.melrobbins.com/
+    strengths:
+      - "Design patterns: media-brand homepage centered on flagship podcast, searchable topic navigation, and newsletter acquisition."
+      - "Messaging approach: direct, practical, and science-backed personal-growth coaching voice."
+      - "CTAs: clear ecosystem CTAs around podcast discovery and newsletter subscription as relationship-building channels."
+      - "Trust signals: #1 podcast claims, major audience metrics, bestselling book performance, and personal brand authority."
+      - "Content structure & SEO positioning: high-frequency topic pages (anxiety, confidence, habits, relationships) support discoverability and long-tail capture."
+    weaknesses:
+      - "Homepage primarily monetizes attention (content audience) rather than driving one focused behavior-change program conversion."
+      - "Brand scale can overshadow niche positioning around behavior cessation methodology."
+      - "Multiple media pathways may reduce immediate action toward a single paid offer."
+
+insights:
+  - "Design patterns: top performers use a clear hero promise + repeated CTA blocks + social proof cadence. For Stop It Summit, a single narrative arc (problem -> mechanism -> proof -> invitation) would likely outperform biographical-heavy layout."
+  - "Messaging approach: competitors pair emotional relief with concrete mechanism language (frameworks, habits, systems). Stop It Summit should foreground 'how stopping works' earlier, not only founder story."
+  - "CTAs: strongest funnels offer tiered conversion (free diagnostic/assessment, free training/chapter, then premium program). A single high-friction CTA is less competitive."
+  - "Trust signals: market leaders stack quantified proof (users served, books sold, media logos, outcomes) above the fold. Eric's credentials are strong but should be packaged into scannable proof cards."
+  - "Content structure: conversion pages that chunk content into modular sections (benefits, who it's for, method, testimonials, FAQ) are easier to scan than long uninterrupted narrative text."
+  - "SEO positioning: competitors own either broad authority terms (high performance, personal growth) or deep niche terms (build/break habits). Stop It Summit can win by owning 'behavior cessation' and 'how to stop [specific behavior]' clusters."
+
+opportunities:
+  - "Reposition page hero from biography-first to outcome-first: e.g., 'Stop the behavior you keep repeating—without willpower battles.'"
+  - "Add a Behavior Cessation Starter CTA (free self-assessment or mini training) to capture email leads before summit conversion."
+  - "Build trust-signal strip near hero: people helped, years in practice, awards, speaking credentials, notable organizations."
+  - "Introduce a clear section architecture: What this is -> Who it's for -> Stop Style methodology -> Results/testimonials -> FAQ -> CTA."
+  - "Create SEO landing pages for high-intent long-tail queries (e.g., stop emotional eating, stop procrastinating, stop doom-scrolling) that funnel into the summit."
+  - "Test CTA variants with stronger specificity: 'Find Your Stop Style', 'Watch the Free Stop Method Class', 'Join the Stop It Summit'."

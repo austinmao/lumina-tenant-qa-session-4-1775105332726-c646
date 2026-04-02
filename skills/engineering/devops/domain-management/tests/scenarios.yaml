@@ -1,0 +1,53 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/devops/domain-management
+  trigger: /domain-management
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: domain-management-smoke
+  description: Domain management produces DNS and SSL configuration.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /domain-management example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/domain-management-spec.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/domain-management-spec.md
+    sections:
+    - DNS
+    - SSL
+    - CNAME
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - example.org
+    - example.com
+    - example.com
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: domain-management-email-records
+  description: Email domain setup includes SPF, DKIM, DMARC.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /domain-management example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/domain-management-spec.md
+    sections:
+    - SPF
+  - type: no_span_errors

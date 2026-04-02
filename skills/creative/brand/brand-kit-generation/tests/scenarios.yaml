@@ -1,0 +1,57 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/brand/brand-kit-generation
+  trigger: /brand-kit
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: brand-kit-smoke
+  description: Generating a brand kit from a single primary color produces palette,
+    type scale, and CSS files.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-a
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /brand-kit --primary "#8b7355"
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/brand-kit-generation.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/brand-kit-generation.md
+    sections:
+    - Brand Kit Generation Report
+    - Palette
+    - Type Scale
+    - Accessibility Notes
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: brand-kit-invalid-color
+  description: Providing an invalid color format does not produce output files.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /brand-kit --primary "not-a-color"
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: fs.write
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

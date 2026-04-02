@@ -1,0 +1,42 @@
+version: "1.0"
+
+handoff:
+  from: agents-marketing-campaign-orchestrator
+  to: skills-campaign-api
+  mechanism: sessions_spawn
+
+caller_provides:
+  required_context:
+    - name: event_id
+      description: "Anchored event id captured earlier in the workflow."
+    - name: offer_id
+      description: "Anchored offer id captured earlier in the workflow."
+    - name: approval_gate
+      description: "Campaign record creation happens only after approval is complete."
+  required_artifacts:
+    - path_pattern: memory/campaigns/{{today}}-*.md
+      description: "Approved campaign staging brief."
+    - path_pattern: memory/logs/api-submits/{{today}}.md
+      description: "API submit log containing the event and offer ids."
+
+callee_produces:
+  required_artifacts:
+    - path_pattern: memory/logs/api-submits/{{today}}.md
+      description: "API submit log containing the created or reused campaign id."
+  state_updates:
+    - description: "Campaign API creates the anchored campaign record after the event and offer anchors exist."
+  prohibited_actions:
+    - tool: resend.send
+      reason: "Campaign record creation is approval-gated and not a send action."
+
+assertions:
+  pre_delegation:
+    - type: delegation_occurred
+      from_agent: agents-marketing-campaign-orchestrator
+      to_agent: skills-campaign-api
+      log_path: /tmp/openclaw/openclaw-{{today}}.log
+      run_id: "{{run_id}}"
+  post_delegation:
+    - type: log_entry
+      path: memory/logs/api-submits/{{today}}.md
+      pattern: campaign_id

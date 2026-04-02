@@ -1,0 +1,11 @@
+{
+  "action": "ESCALATING",
+  "reason": "infrastructure",
+  "report_paths": [
+    "/tmp/happy-path-r1.yaml"
+  ],
+  "run_count": 1,
+  "scenario": "happy-path",
+  "updated_at": "2026-03-23T16:50:31.126116Z",
+  "workflow": "newsletter"
+}

@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/content-freshness
+  trigger: /content-freshness
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: content-freshness-smoke
+  description: Content freshness detects stale pages and links.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /content-freshness example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/content-freshness-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/content-freshness-report.md
+    sections:
+    - Stale
+    - Broken Links
+    - Outdated
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: content-freshness-clean
+  description: All-fresh site produces clean report.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /content-freshness example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/content-freshness-report.md
+    sections:
+    - clean
+  - type: no_span_errors

@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/campaigns/campaign-tdd
+  trigger: /campaign-tdd
+defaults:
+  timeout: 120
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: campaign-tdd-smoke
+  description: Campaign TDD records the inventory and green verification report for
+    generated campaign code.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /campaign-tdd spring-campaign
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/webinars/{{today}}-spring-campaign-tdd-complete.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+    sections:
+    - TDD Complete
+    - Tests before
+    - Tests after
+    - Failures
+    - vitest output
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-code-only-changes-without-tests
+  description: Campaign TDD rejects code-only completion without a test pass.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /campaign-tdd spring-campaign without adding tests
+    params:
+      test_mode: true
+  then:
+  - type: log_entry
+    path: /tmp/openclaw/openclaw-{{today}}.log
+    pattern: "All tests passing: \u2705"
+    absent: true
+  - type: no_span_errors

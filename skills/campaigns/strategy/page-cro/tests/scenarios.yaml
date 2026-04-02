@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/strategy/page-cro
+  trigger: /page-cro
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: page-cro-smoke
+  description: Analyze a landing page and produce CRO recommendations.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /page-cro Analyze the retreat landing page at example.org/retreats
+      for conversion
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/page-cro-analysis.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/page-cro-analysis.md
+    sections:
+    - CRO
+    - recommendation
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: page-cro-edge-above-fold
+  description: Above-the-fold analysis covers hero, headline, and primary CTA placement.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /page-cro Focus on above-the-fold optimization for the retreat landing
+      page
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/page-cro-analysis.md
+    sections:
+    - fold
+    - CTA
+  - type: no_span_errors

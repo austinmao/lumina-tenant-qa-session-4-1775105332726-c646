@@ -1,0 +1,18 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/qa/validate
+  trigger: /validate-skill
+scenarios:
+- name: validate-structure-smoke
+  tags:
+  - smoke
+  - negative
+  when:
+    invoke: /validate-skill skills/newsletter/SKILL.md
+  then:
+  - type: artifact_exists
+    path: memory/logs/qa/{{today}}-validate-structure-smoke.yaml
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute

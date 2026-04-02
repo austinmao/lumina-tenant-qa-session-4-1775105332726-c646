@@ -1,0 +1,15 @@
+type: handoff-contract
+pipeline: campaign
+stage: design
+from: campaign-orchestrator
+to: agents-frontend-designer
+binding:
+  brand_tokens: "Brand Aura & Grain"
+  responsive_breakpoints: [375, 768, 1024, 1440]
+  wcag_level: "AA"
+delegated:
+  layout_decisions: true
+  visual_hierarchy: true
+artifact_path: "memory/campaigns/{{campaign_id}}/design-spec.md"
+verification:
+  - file_exists: "memory/campaigns/{{campaign_id}}/design-spec.md"

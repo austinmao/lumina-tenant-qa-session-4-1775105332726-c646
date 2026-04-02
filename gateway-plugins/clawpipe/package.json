@@ -1,0 +1,10 @@
+{
+  "name": "@openclaw-ext/clawpipe",
+  "private": true,
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

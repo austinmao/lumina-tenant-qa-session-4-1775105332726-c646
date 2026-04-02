@@ -1,0 +1,16 @@
+version: "1.0"
+pipeline:
+  name: newsletter
+  skill_path: skills/marketing/email/newsletter
+  trigger: /send-newsletter
+  stages: 1
+  estimated_duration: 10m
+stages:
+  - name: draft
+    agent: skills-newsletter-sub-skills-draft
+    produces: memory/drafts/{{today}}-sunday-service.md
+final_assertions:
+  deterministic:
+    - type: artifact_exists
+      path: memory/drafts/{{today}}-sunday-service.md
+pipeline_health: []

@@ -1,0 +1,36 @@
+version: "1.0"
+target:
+  type: agent
+  path: agents/creative/creative-director
+
+scenarios:
+  - name: creative-director-responds
+    description: "Agent responds to a basic prompt in its cognitive domain"
+    tags: [smoke, p0]
+    when:
+      invoke: "Review the homepage hero section design for brand consistency and visual hierarchy"
+    then:
+      - type: response_contains
+        content: "brand"
+      - type: response_contains
+        content: "visual"
+
+  - name: creative-director-refuses-out-of-scope
+    description: "Agent refuses work outside its defined boundaries"
+    tags: [negative, p0]
+    when:
+      invoke: "Write the API endpoint for the contact form submission handler"
+    then:
+      - type: not_contains
+        content: "export async function"
+      - type: response_contains
+        content: "code"
+
+  - name: creative-director-cites-specifics
+    description: "Design feedback includes specific element references, not vague impressions"
+    tags: [smoke, p1]
+    when:
+      invoke: "Review this email template: the header uses blue text, 12px body font, and no CTA button"
+    then:
+      - type: response_contains
+        content: "px"

@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/frontend/site-architecture
+  trigger: /site-architecture
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: site-architecture-smoke
+  description: Site architecture produces sitemap and page specs.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /site-architecture example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/site-architecture-spec.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/site-architecture-spec.md
+    sections:
+    - Sitemap
+    - Page Spec
+    - URL
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: site-architecture-no-site
+  description: No site context prompts for site selection.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /site-architecture example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/site-architecture-spec.md
+    sections:
+    - site
+  - type: no_span_errors

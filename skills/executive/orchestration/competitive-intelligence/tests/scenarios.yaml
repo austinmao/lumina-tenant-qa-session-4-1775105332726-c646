@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/executive/orchestration/competitive-intelligence
+  trigger: /competitive-intelligence
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: competitive-intelligence-smoke
+  description: Analyze competitive landscape using Porter's Five Forces.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /competitive-intelligence Analyze the psychedelic retreat market competitive
+      landscape
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/competitive-analysis.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/competitive-analysis.md
+    sections:
+    - Porter
+    - competitive
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: competitive-intelligence-edge-positioning
+  description: Positioning map identifies differentiation opportunities.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /competitive-intelligence Map Brand positioning against top 5 retreat
+      competitors
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/competitive-analysis.md
+    sections:
+    - positioning
+    - differentiation
+  - type: no_span_errors

@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/email/newsletter/sub-skills/re-engage
+  trigger: /newsletter-re-engage
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: re-engage-smoke
+  description: Re-engage writes the suppression cleanup log after the post-send followup
+    sequence.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /newsletter-re-engage Sunday Service cleanup run
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/logs/test-runs/{{today}}-newsletter-re-engage-cleanup.md
+    timeout: 120
+  - type: artifact_contains
+    path: memory/logs/test-runs/{{today}}-newsletter-re-engage-cleanup.md
+    timeout: 120
+    sections:
+    - Detection query
+    - Actions taken
+    - Outcome
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: re-engage-forbids-unsubscribed-reactivation
+  description: Re-engage must not reactivate suppressed subscribers.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /newsletter-re-engage attempt to re-add an unsubscribed address
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

@@ -1,0 +1,56 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/website/detect-seo-cannibalization
+  trigger: /detect-seo-cannibalization
+defaults:
+  timeout: 120
+  test_mode: true
+scenarios:
+- name: cannibalization-smoke
+  description: Invoking cannibalization detection scans across all tenant sites and
+    produces an overlap report.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /detect-seo-cannibalization
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/seo-cannibalization.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/seo-cannibalization.md
+    sections:
+    - SEO Cannibalization Report
+    - Sites scanned
+    - Summary
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: cannibalization-no-site
+  description: Invoking without an active site does not produce a cannibalization
+    report.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: artifact_absent
+    path: memory/site-context.yaml
+  when:
+    invoke: /detect-seo-cannibalization
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: fs.read
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

@@ -1,0 +1,58 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/platform/testing/clawspec
+  trigger: /clawspec
+defaults:
+  timeout: 60
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: smoke-basic
+  description: Smoke coverage for platform/testing/clawspec
+  tags:
+  - smoke
+  - boundary-skill
+  given:
+  - type: file_absent
+    path: memory/drafts/platform-testing-clawspec-artifact.md
+  when:
+    invoke: /clawspec
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/platform-testing-clawspec-artifact.md
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - scenarios.yaml
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-out-of-scope
+  description: Negative coverage for unsupported behavior
+  tags:
+  - negative
+  - boundary-skill
+  when:
+    invoke: /clawspec do something forbidden
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: send_message
+  - &id001
+    type: no_span_errors
+- name: permission-guardrails
+  description: Permission boundaries remain intact
+  tags:
+  - permission
+  when:
+    invoke: /clawspec
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: external_write
+  - *id001

@@ -1,0 +1,161 @@
+kind: agent
+id: campaigns/campaign-orchestrator
+title: Campaign Orchestrator
+description: Multi-channel campaign execution manager for Lumina OS. Coordinates email
+  sequences, SMS campaigns, newsletters, webinars, automation workflows, and A/B testing.
+schema_version: 0.2.0
+identity:
+  display_name: Campaign Orchestrator
+  emoji: "\U0001F4E3"
+org:
+  department: campaigns
+  business_function: campaign-execution
+  domain: marketing
+  reports_to: executive/cmo
+  org_level: manager
+  manages: []
+operation:
+  audience: both
+  exposure: private
+  channels:
+  - type: slack
+    audience: operator
+    mode: both
+    approval_posture: confirm
+  triggers: []
+  side_effects:
+  - type: send_message
+    description: Sends email campaigns, SMS messages, and newsletter deliveries via
+      outbound gate
+  - type: internal_write
+    description: Updates campaign state, pipeline records, and audience segments
+  approvals:
+    default: confirm
+  integrations:
+  - resend
+  - twilio
+  execution:
+    timeout_seconds: 120
+    max_retries: 1
+    idempotent: false
+  coordination:
+    pattern: orchestrator
+    can_spawn: true
+    max_spawn_depth: 1
+    accepts_handoffs_from:
+    - executive/cmo
+    produces_handoffs_for:
+    - content/copywriter
+    - engineering/email-engineer
+  escalation:
+    chain:
+    - executive/cmo
+    - operator
+    timeout_seconds: 300
+    fallback_behavior: escalate
+  resilience:
+    circuit_breaker_threshold: 3
+    fallback_agent: null
+  scheduling:
+    max_concurrent: 2
+    quiet_hours:
+      start: '22:00'
+      end: 08:00
+      timezone: America/Los_Angeles
+    sla_response_seconds: 1800
+policy:
+  cognition:
+    complexity: medium
+    cost_posture: standard
+    risk_posture: low
+  memory:
+    retrieval_mode: enhanced_tier
+    namespaces:
+    - campaigns
+    - shared
+    write_permitted: true
+    fallback_behavior: file_only
+    routing_compatible: true
+  security:
+    strict: true
+    prompt_injection_guard: true
+    secret_handling: env_only
+    allowed_tools:
+    - read
+    - write
+    - exec
+    denied_tools: []
+  resource_limits:
+    max_tokens_per_session: 100000
+    max_sessions_per_day: 20
+    max_outbound_per_day: 100
+  compliance:
+    data_classification: internal
+    handles_pii: true
+    handles_phi: false
+    retention_days: 90
+  observability:
+    log_level: standard
+    cost_tracking: true
+    alert_on_failure: true
+    paperclip_sync: true
+  qa:
+    enabled: true
+    categories:
+      smoke: true
+      contract: true
+      integration: true
+      security: true
+      drift: true
+      golden: true
+    required_pass_rate: 1.0
+  documentation:
+    generate_registry_entry: true
+    generate_claude_md_section: true
+    sections: []
+  profiles:
+  - base/standard
+  - security/standard
+  - qa/standard
+  - memory/enhanced
+governance:
+  paperclip:
+    export: true
+    agent_type: orchestrator
+    include_in_org_chart: true
+    include_in_heartbeat: true
+    issue_id: null
+  visibility: internal
+  budget_tier: standard
+  risk_tier: medium
+  approval_tier: medium
+  five_forces:
+    forces:
+    - parallel_execution
+    - isolated_memory
+    justification: Orchestration mode (coordinates parallel execution of email, SMS,
+      and automation workflows), isolated memory (campaign state must persist across
+      sessions)
+provenance:
+  created_at: '2026-03-17T00:00:00Z'
+  updated_at: '2026-03-17T00:00:00Z'
+  lifecycle: managed
+  source: scaffold-adopt
+agent:
+  heartbeat:
+    enabled: true
+    cadence_minutes: 60
+    checklist:
+    - Check pending campaign deliveries
+    - Monitor active A/B tests
+    - Review newsletter queue
+  workspace_files:
+  - SOUL.md
+  - AGENTS.md
+  - MEMORY.md
+  soul_voice_section: Who I Am
+  tools_allowlist:
+  - read
+  - write
+  - exec
+  tools_denylist: []

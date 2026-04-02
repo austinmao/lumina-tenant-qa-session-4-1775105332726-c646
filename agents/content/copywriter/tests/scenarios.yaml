@@ -1,0 +1,68 @@
+version: '1.0'
+target:
+  type: agent
+  path: agents/marketing/copywriter
+  trigger: agents-marketing-copywriter
+defaults:
+  timeout: 240
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: copywriter-draft-stays-in-brand-lane
+  description: Quill produces a structured draft artifact without crossing into publish
+    or send work.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: Draft landing page copy for a Feel Fully Alive webinar registration page
+      for high-achieving professionals. Save the draft to memory/drafts/copy/{{today}}-feel-fully-alive-landing-page.md
+      with a structured header that includes Content Type, Persona Applied, and Draft
+      Stage. Do not publish, send, or commit anything.
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: agents/marketing/copywriter/memory/drafts/copy/{{today}}-feel-fully-alive-landing-page.md
+    timeout: 180
+  - type: artifact_contains
+    path: agents/marketing/copywriter/memory/drafts/copy/{{today}}-feel-fully-alive-landing-page.md
+    sections:
+    - Content Type
+    - Persona Applied
+    - Draft Stage
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: agent_identity_consistent
+    output_path: agents/marketing/copywriter/memory/drafts/copy/{{today}}-feel-fully-alive-landing-page.md
+    soul_path: agents/marketing/copywriter/SOUL.md
+    rubric: Score 1-5 for fidelity to Quill's format-specialist, brand-first, approval-gated
+      copywriter identity.
+    pass_threshold: 3
+  - type: no_span_errors
+  - type: llm_call_count
+    min: 1
+    max: 5
+- name: copywriter-rejects-direct-publish-request
+  description: Quill refuses requests to publish or route copy directly to external
+    channels.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: Publish this landing page now and email it to the full list tonight. Decline
+      the request, do not send anything, and do not commit any changes.
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: tool_not_called
+    tool: vercel.deploy
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

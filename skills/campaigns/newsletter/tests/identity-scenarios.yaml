@@ -1,0 +1,96 @@
+version: "1.0"
+target:
+  type: skill
+  path: skills/marketing/email/newsletter
+  trigger: /send-newsletter
+
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+
+scenarios:
+  # T010 + T012b(1): Copywriter retains its own persona during newsletter draft
+  - name: copywriter-uses-own-persona
+    description: "Newsletter draft step spawns the copywriter via sessions_spawn and the draft reflects the copywriter's SOUL.md persona (not Ann Handley, not a random choice) without the orchestrator specifying the persona in the task string."
+    tags: [identity, p0]
+
+    when:
+      invoke: /send-newsletter Sunday Service draft only and wait for Austin approval
+      params:
+        test_mode: true
+
+    then:
+      - type: artifact_exists
+        path: memory/drafts/{{today}}-sunday-service.md
+        timeout: 180
+        updated_after: "{{run_started_at}}"
+
+      - type: delegation_occurred
+        from: newsletter-orchestrator
+        to: agents-marketing-copywriter
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+      - type: agent_identity_consistent
+        output_path: memory/drafts/{{today}}-sunday-service.md
+        soul_path: agents/marketing/copywriter/SOUL.md
+        rubric: "Score 1-5 for whether the draft declares a persona from the copywriter's SOUL.md (e.g., 'Seth Godin x Wise Alchemist' or explicit 'Persona Applied' in the delivery header) and the writing style matches that persona — not a random or unrelated voice."
+        pass_threshold: 3
+
+      - type: artifact_contains
+        path: memory/drafts/{{today}}-sunday-service.md
+        sections: [Step A, Step B, Step C, Step D]
+
+  # T011 + T012b(2): Brand guardian retains its own gate criteria during newsletter gate
+  - name: brand-guardian-uses-own-criteria
+    description: "Newsletter gate step spawns the brand guardian via sessions_spawn and the gate output contains the brand guardian's actual gate checks from its SOUL.md — kill list, Godin filter, and Wise Alchemist checklist."
+    tags: [identity, p0]
+
+    when:
+      invoke: /send-newsletter Sunday Service draft only and wait for Austin approval
+      params:
+        test_mode: true
+
+    then:
+      - type: artifact_exists
+        path: memory/drafts/{{today}}-sunday-service.md
+        timeout: 180
+        updated_after: "{{run_started_at}}"
+
+      - type: delegation_occurred
+        from: newsletter-orchestrator
+        to: agents-marketing-brand
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+      - type: artifact_contains
+        path: memory/drafts/{{today}}-sunday-service.md
+        sections: [Brand Gate, gate_status]
+
+      - type: agent_identity_consistent
+        output_path: memory/drafts/{{today}}-sunday-service.md
+        soul_path: agents/marketing/brand-guardian/SOUL.md
+        rubric: "Score 1-5 for whether the Brand Gate section contains the brand guardian's actual criteria: kill-list check, extended kill-list check, Wise Alchemist checklist, Seth Godin filter, post-click consistency, and voice-first test — matching what the brand guardian's SOUL.md prescribes."
+        pass_threshold: 3
+
+  # T012: Edge case — spawning agent with missing SOUL.md
+  - name: missing-soul-md-proceeds-gracefully
+    description: "When the orchestrator spawns a sub-agent whose SOUL.md does not exist, the pipeline logs a warning but does not crash — the sub-agent proceeds with the task string only."
+    tags: [identity, negative, p0]
+
+    when:
+      invoke: /send-newsletter Sunday Service draft only using a nonexistent agent workspace
+      params:
+        test_mode: true
+        override_copywriter_agent: agents-test-nosoul
+
+    then:
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "SOUL.md not found|no identity surface|identity injection skipped"
+
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "fatal|crash|unhandled"
+        absent: true

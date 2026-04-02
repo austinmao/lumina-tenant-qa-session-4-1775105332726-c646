@@ -1,0 +1,52 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/email/newsletter/sub-skills/brief
+  trigger: /newsletter-brief
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: brief-smoke
+  description: Brief assembly writes the expected sections for the newsletter draft
+    step.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /newsletter-brief Sunday Service
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/{{today}}-sunday-service-brief.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/{{today}}-sunday-service-brief.md
+    sections:
+    - Upcoming Events
+    - Pipeline Signals
+    - CTA Direction
+    - Trend Context
+    - Prior Performance
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: brief-rejects-missing-topic
+  description: Brief assembly rejects a newsletter request with no usable type or
+    topic.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /newsletter-brief with no topic or newsletter type
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

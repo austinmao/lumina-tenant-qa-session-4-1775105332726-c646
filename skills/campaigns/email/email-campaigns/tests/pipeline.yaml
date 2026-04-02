@@ -1,0 +1,98 @@
+version: "1.0"
+
+pipeline:
+  name: campaign-workflow
+  skill_path: skills/campaign-workflow
+  trigger: /generate-campaign
+  stages: 11
+  estimated_duration: "45-90m"
+
+stages:
+  - name: intake
+    agent: agents-marketing-campaign-orchestrator
+    produces: memory/campaigns/{{today}}-*.md
+
+  - name: landing_page_copy
+    agent: agents-marketing-copywriter
+    produces: memory/drafts/copy/{{today}}-*.md
+    handoff_contract: tests/handoffs/atlas-to-quill.yaml
+
+  - name: email_copy
+    agent: agents-marketing-email
+    produces: memory/drafts/{{today}}-sequence-*.md
+    handoff_contract: tests/handoffs/atlas-to-lumina.yaml
+
+  - name: email_html
+    agent: agents-marketing-email-engineer
+    produces: memory/template-state.json
+    handoff_contract: tests/handoffs/lumina-to-forge.yaml
+
+  - name: brand_gate
+    agent: agents-marketing-brand
+    produces: memory/drafts/copy/{{today}}-*.md
+    handoff_contract: tests/handoffs/quill-to-brand.yaml
+
+  - name: email_e2e
+    agent: skills-campaign-workflow
+    produces: /tmp/campaign-e2e-*-{{today}}.html
+
+  - name: qa_orchestrator
+    agent: skills-campaign-workflow
+    produces: memory/logs/qa/{{today}}-campaign-workflow-*.yaml
+
+  - name: approval
+    agent: skills-campaign-workflow
+    produces: memory/campaigns/{{today}}-*.md
+    requires_approval: true
+
+  - name: event_anchor
+    agent: skills-event-api
+    produces: memory/logs/api-submits/{{today}}.md
+    handoff_contract: tests/handoffs/atlas-to-event-api.yaml
+
+  - name: offer_anchor
+    agent: skills-offer-api
+    produces: memory/logs/api-submits/{{today}}.md
+    handoff_contract: tests/handoffs/atlas-to-offer-api.yaml
+
+  - name: campaign_record
+    agent: skills-campaign-api
+    produces: memory/logs/api-submits/{{today}}.md
+    handoff_contract: tests/handoffs/atlas-to-campaign-api.yaml
+
+final_assertions:
+  deterministic:
+    - type: artifact_exists
+      path: memory/campaigns/{{today}}-*.md
+    - type: artifact_exists
+      path: memory/drafts/copy/{{today}}-*.md
+    - type: artifact_exists
+      path: memory/drafts/{{today}}-sequence-*.md
+    - type: state_file
+      path: memory/template-state.json
+    - type: artifact_exists
+      path: /tmp/campaign-e2e-*-{{today}}.html
+    - type: log_entry
+      path: memory/logs/api-submits/{{today}}.md
+      pattern: "event_id|offer_id|campaign_id"
+    - type: tool_not_called
+      tool: resend.send
+      log_path: /tmp/openclaw/openclaw-{{today}}.log
+      run_id: "{{run_id}}"
+
+  semantic:
+    - type: llm_judge
+      path: memory/campaigns/{{today}}-*.md
+      rubric: |
+        Score 1-5. The campaign staging package should preserve approval-first
+        discipline, clearly enumerate the generated assets, and avoid implying that
+        delivery happened before Austin explicitly approved it.
+      pass_threshold: 3
+
+pipeline_health:
+  - description: "All artifact-producing stages completed."
+    check: count(produced_artifacts) == count(stages_with_produces)
+  - description: "Every recorded handoff contract passed."
+    check: all handoff contracts passed
+  - description: "Approval completes before anchor creation begins."
+    check: approval gate completed before anchor stages

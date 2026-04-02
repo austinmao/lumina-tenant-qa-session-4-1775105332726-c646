@@ -1,0 +1,54 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/content/writing/content-editing
+  trigger: /content-editing
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: content-editing-smoke
+  description: Invoking content-editing produces a structured editorial review with
+    severity levels.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-a
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /content-editing review this retreat landing page copy
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/content-editing-review.md
+    timeout: 60
+  - type: artifact_contains
+    path: memory/reports/content-editing-review.md
+    sections:
+    - Voice Consistency
+    - Grammar
+    - Brand Compliance
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: content-editing-no-site-context
+  description: Invoking without site context prompts for site selection.
+  tags:
+  - negative
+  - p1
+  given:
+  - type: artifact_absent
+    path: memory/site-context.yaml
+  when:
+    invoke: /content-editing review this copy
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: write
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

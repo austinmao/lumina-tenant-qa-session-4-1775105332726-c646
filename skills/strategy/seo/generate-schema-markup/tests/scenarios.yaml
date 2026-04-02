@@ -1,0 +1,55 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/website/generate-schema-markup
+  trigger: /generate-schema-markup
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: schema-markup-smoke
+  description: Invoking schema markup generation produces valid JSON-LD output with
+    @context and @type.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /generate-schema-markup --page /about --type Organization
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/schema-markup.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/schema-markup.md
+    sections:
+    - application/ld+json
+    - '@context'
+    - '@type'
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: schema-markup-no-site
+  description: Invoking without an active site does not produce schema output.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: artifact_absent
+    path: memory/site-context.yaml
+  when:
+    invoke: /generate-schema-markup --page /about --type Organization
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: fs.write
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

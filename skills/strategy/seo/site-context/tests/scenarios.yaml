@@ -1,0 +1,127 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/website/site-context
+  trigger: /site
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: site-context-smoke
+  description: Invoking /site tenant-b writes memory/site-context.yaml with correct
+    tenant fields.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /site tenant-b
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/site-context.yaml
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/site-context.yaml
+    sections:
+    - site_id
+    - domain
+    - brand_root
+    - site_dir
+    - sanity.dataset
+  - &id001
+    type: no_span_errors
+  - &id002
+    type: tool_not_invoked
+    tool: shell.execute
+- name: site-context-switch
+  description: Switching from tenant-b to tenant-a overwrites site-context.yaml
+    with tenant-a values.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /site tenant-a
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/site-context.yaml
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/site-context.yaml
+    sections:
+    - site_id
+    - domain
+    - brand_root
+    - site_dir
+    - sanity.dataset
+  - type: artifact_absent_words
+    path: memory/site-context.yaml
+    words:
+    - 'site_id: tenant-b'
+    - 'domain: example.com'
+  - *id001
+  - *id002
+- name: site-context-nonexistent
+  description: Invoking /site with a nonexistent tenant must not write site-context.yaml.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /site nonexistent
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: fs.write
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - &id003
+    type: no_span_errors
+- name: site-context-show-current
+  description: Invoking /site with no args when a site is active displays context
+    without writing.
+  tags:
+  - smoke
+  - p1
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /site
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: fs.write
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - *id001
+  - *id002
+- name: site-context-no-active-site
+  description: Invoking /site with no args and no existing site-context.yaml lists
+    available tenants.
+  tags:
+  - negative
+  - p1
+  given:
+  - type: artifact_absent
+    path: memory/site-context.yaml
+  when:
+    invoke: /site
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: fs.write
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - *id003

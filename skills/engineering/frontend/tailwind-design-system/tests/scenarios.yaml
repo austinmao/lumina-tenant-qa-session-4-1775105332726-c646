@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/frontend/tailwind-design-system
+  trigger: /tailwind-design-system
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: tailwind-design-system-smoke
+  description: Build a design system with Tailwind CSS v4 tokens and component variants.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /tailwind-design-system Create a design system with brand colors, type
+      scale, and spacing for the brand
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/tailwind-design-system-spec.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/tailwind-design-system-spec.md
+    sections:
+    - token
+    - color
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: tailwind-design-system-edge-dark-mode
+  description: Dark mode support uses CSS custom properties for theme switching.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /tailwind-design-system Add dark mode support with automatic OS preference
+      detection
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/tailwind-design-system-spec.md
+    sections:
+    - dark
+  - type: no_span_errors

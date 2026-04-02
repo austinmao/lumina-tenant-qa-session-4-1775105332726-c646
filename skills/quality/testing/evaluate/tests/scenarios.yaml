@@ -1,0 +1,18 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/qa/evaluate
+  trigger: /evaluate
+scenarios:
+- name: evaluate-contracts-smoke
+  tags:
+  - smoke
+  - negative
+  when:
+    invoke: /evaluate tests/fixtures/valid_scenario.yaml
+  then:
+  - type: artifact_exists
+    path: memory/logs/qa/{{today}}-newsletter-happy-path-r1.yaml
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute

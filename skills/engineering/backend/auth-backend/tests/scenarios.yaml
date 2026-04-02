@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/backend/auth-backend
+  trigger: /auth-backend
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: auth-backend-smoke
+  description: Implement a JWT auth flow with token refresh and RBAC.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /auth-backend Implement JWT authentication with role-based access for
+      admin and user roles
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/auth-backend-design.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/auth-backend-design.md
+    sections:
+    - JWT
+    - RBAC
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: auth-backend-edge-token-rotation
+  description: Token rotation strategy addresses refresh token reuse detection.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /auth-backend Design token rotation with refresh token reuse detection
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/auth-backend-design.md
+    sections:
+    - rotation
+    - reuse
+  - type: no_span_errors

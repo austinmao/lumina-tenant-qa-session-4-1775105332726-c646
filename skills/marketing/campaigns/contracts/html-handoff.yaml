@@ -1,0 +1,17 @@
+type: handoff-contract
+pipeline: campaign
+stage: html
+from: campaign-orchestrator
+to: agents-marketing-email-engineer
+binding:
+  design_system: "email-design-system"
+  mobile_first: true
+  max_width: 600
+  wcag_level: "AA"
+delegated:
+  component_selection: true
+  spacing_decisions: true
+artifact_path: "memory/campaigns/{{campaign_id}}/email.html"
+verification:
+  - file_exists: "memory/campaigns/{{campaign_id}}/email.html"
+  - contains: "<!DOCTYPE"

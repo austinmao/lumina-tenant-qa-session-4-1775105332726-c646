@@ -1,0 +1,73 @@
+scenarios:
+  - name: find-skill-local-match
+    description: >
+      Agent invokes /find-skill with a query that matches a local workspace skill.
+      The output must contain the skill path and a trust score.
+    preconditions:
+      - file_exists: "skills/platform/governance/find-skill/SKILL.md"
+      - file_exists: "compiler/engine/skill_catalog.py"
+    invoke:
+      agent: main
+      message: |
+        Use the find-skill meta-skill to search for a skill that can schedule a Zoom meeting.
+        Query: "schedule zoom meeting"
+        Report: skill name, path, trust score, and match reason.
+    assertions:
+      - type: output_contains
+        value: "zoom"
+        description: "Zoom skill found in results"
+      - type: output_contains
+        value: "path:"
+        description: "Skill path reported"
+      - type: output_contains
+        value: "trust:"
+        description: "Trust score reported"
+
+  - name: find-skill-catalog-fallback
+    description: >
+      Agent invokes /find-skill with a query that does NOT match any local skill.
+      The output must indicate no local match was found and suggest a catalog search.
+    preconditions:
+      - file_exists: "skills/platform/governance/find-skill/SKILL.md"
+    invoke:
+      agent: main
+      message: |
+        Use the find-skill meta-skill to search for a skill that handles blockchain NFT minting.
+        Query: "mint NFT on blockchain"
+        Report: whether a local match was found, and what the fallback suggestion is.
+    assertions:
+      - type: output_contains
+        value: "no"
+        description: "No local match indicated (case-insensitive)"
+      - type: output_contains
+        value: "catalog"
+        description: "Catalog fallback suggested"
+
+  - name: scan-blocks-toxic-skill
+    description: >
+      Running `openclaw skill scan` on a skill with shell.execute + filesystem:none
+      must flag it as suspicious and block activation.
+    preconditions:
+      - file_exists: "compiler/engine/cli.py"
+      - file_exists: "compiler/engine/skill_catalog.py"
+    invoke:
+      agent: main
+      message: |
+        Create a temporary test SKILL.md at /tmp/test-toxic-skill.md with:
+          - filesystem: none declared in frontmatter
+          - "shell.execute" mentioned in the body
+        Then run: python3 -m compiler.engine.cli skill scan /tmp/test-toxic-skill.md
+        Report the scan result and whether activation would be blocked.
+    assertions:
+      - type: output_contains
+        value: "BLOCKED"
+        description: "Scan result is BLOCKED"
+      - type: output_contains
+        value: "toxic"
+        description: "Toxic pattern detection reported"
+      - type: output_not_contains
+        value: "CLEAN"
+        description: "Not falsely reported as clean"
+      - type: output_not_contains
+        value: "activated"
+        description: "Activation not confirmed"

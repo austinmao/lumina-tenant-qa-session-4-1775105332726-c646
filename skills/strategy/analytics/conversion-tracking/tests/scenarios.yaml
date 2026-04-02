@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/analytics/conversion-tracking
+  trigger: /conversion-tracking
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: conversion-tracking-smoke
+  description: Conversion tracking sets up pixels and funnels.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /conversion-tracking example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/conversion-tracking-setup.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/conversion-tracking-setup.md
+    sections:
+    - GA4
+    - Pixel
+    - Conversion
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: conversion-missing-id
+  description: Missing GA_MEASUREMENT_ID blocks setup.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /conversion-tracking example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/conversion-tracking-setup.md
+    sections:
+    - GA_MEASUREMENT_ID
+  - type: no_span_errors

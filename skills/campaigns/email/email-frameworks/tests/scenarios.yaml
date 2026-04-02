@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/email/email-frameworks
+  trigger: /email-sequence-frameworks
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: email-frameworks-smoke
+  description: Design an email sequence architecture for a retreat launch offer.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /email-sequence-frameworks Design a 7-email launch sequence for the Awaken
+      Together retreat
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/email-framework-plan.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/email-framework-plan.md
+    sections:
+    - sequence
+    - email
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: email-frameworks-edge-nurture
+  description: Nurture sequence for cold leads includes re-engagement triggers.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /email-sequence-frameworks Design a nurture sequence for leads who did
+      not book a call
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/email-framework-plan.md
+    sections:
+    - nurture
+  - type: no_span_errors

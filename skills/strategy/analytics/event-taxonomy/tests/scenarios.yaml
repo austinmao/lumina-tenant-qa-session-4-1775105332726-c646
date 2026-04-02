@@ -1,0 +1,51 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/analytics/event-taxonomy
+  trigger: /event-taxonomy
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: event-taxonomy-smoke
+  description: Event taxonomy produces naming conventions.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /event-taxonomy example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/event-taxonomy-doc.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/event-taxonomy-doc.md
+    sections:
+    - Naming Convention
+    - Data Layer
+    - Event
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - form.submitted
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: event-taxonomy-inconsistency
+  description: Inconsistent naming is flagged.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /event-taxonomy example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/event-taxonomy-doc.md
+    sections:
+    - inconsistent
+  - type: no_span_errors

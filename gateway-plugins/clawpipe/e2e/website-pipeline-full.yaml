@@ -1,0 +1,341 @@
+pipeline:
+  name: website-single-page
+  version: 1.1.0
+  description: 'Full website page build: discovery through deploy for one page on ClawPipe v0.5.0'
+defaults:
+  timeout: 10
+  max_retries: 2
+  backoff: exponential
+paths:
+  base: /Users/luminamao/Documents/Github/openclaw/memory/pipelines/${pipeline_id}
+  artifacts: ${base}/artifacts
+  pages: ${base}/pages/${page_slug}
+stages:
+- name: strategy-interview
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh strategy-interview
+  timeout: 900
+  output_contract: pipelines/website/contracts/strategy-interview.yaml
+  agent: agents/website/strategist
+- name: competitor-research
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh competitor-research
+  parallel: true
+  timeout: 600
+  output_contract: pipelines/website/contracts/competitor-research.yaml
+  agent: agents/website/researcher
+- name: synthesize-brief
+  type: reflection
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh synthesize-brief
+  depends_on:
+  - strategy-interview
+  - competitor-research
+  reflection:
+    rubric_path: pipelines/website/rubrics/strategic-brief.yaml
+    max_iterations: 2
+    reviewer_isolation: fresh
+  output_contract: pipelines/website/contracts/strategic-brief.yaml
+  agent: agents/website/strategist
+- name: discovery-approval
+  type: approval
+  depends_on:
+  - synthesize-brief
+  approval_options:
+  - value: approve
+    label: Approve brief
+    is_default: true
+  - value: revise
+    label: Revise brief
+  - value: narrow
+    label: Narrow scope
+  preview_template: Strategic brief ready for ${site_slug}. Review the brief and choose an option.
+- name: extract-brand-signals
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh extract-brand-signals
+  depends_on:
+  - discovery-approval
+  output_contract: pipelines/website/contracts/brand-signals.yaml
+  agent: agents/website/researcher
+- name: generate-design-tokens
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh generate-design-tokens
+  depends_on:
+  - extract-brand-signals
+  output_contract: pipelines/website/contracts/design-tokens.yaml
+  agent: agents/website/visual-designer
+- name: build-brand-profile
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh build-brand-profile
+  depends_on:
+  - generate-design-tokens
+  output_contract: pipelines/website/contracts/brand-profile.yaml
+  agent: agents/product/brand-designer
+- name: brand-approval
+  type: approval
+  depends_on:
+  - build-brand-profile
+  approval_options:
+  - value: approve
+    label: Approve brand system
+    is_default: true
+  - value: revise
+    label: Revise brand
+- name: build-sitemap
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh build-sitemap
+  depends_on:
+  - brand-approval
+  output_contract: pipelines/website/contracts/sitemap.yaml
+  agent: agents/website/architect
+- name: build-content-model
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh build-content-model
+  depends_on:
+  - brand-approval
+  parallel: true
+  output_contract: pipelines/website/contracts/content-model.yaml
+  agent: agents/website/architect
+- name: generate-page-spec
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh generate-page-spec
+  depends_on:
+  - build-sitemap
+  - build-content-model
+  output_contract: pipelines/website/contracts/page-spec.yaml
+  agent: agents/website/architect
+- name: seo-keyword-injection
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh seo-keyword-injection
+  depends_on:
+  - generate-page-spec
+  output_contract: pipelines/website/contracts/keyword-map.yaml
+  agent: agents/website/seo
+- name: architecture-approval
+  type: approval
+  depends_on:
+  - seo-keyword-injection
+  approval_options:
+  - value: approve
+    label: Approve architecture
+    is_default: true
+  - value: revise
+    label: Revise specs
+- name: wireframe
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh wireframe
+  depends_on:
+  - architecture-approval
+  output_contract: pipelines/website/contracts/wireframe.yaml
+  agent: agents/website/ux-designer
+- name: copy-draft
+  type: reflection
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh copy-draft
+  depends_on:
+  - wireframe
+  reflection:
+    rubric_path: pipelines/website/rubrics/page-copy.yaml
+    max_iterations: 2
+    reviewer_isolation: fresh
+  output_contract: pipelines/website/contracts/copy-draft.yaml
+  agent: agents/marketing/copywriter
+- name: copy-review
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh copy-review
+  depends_on:
+  - copy-draft
+  output_contract: pipelines/website/contracts/copy-reviewed.yaml
+  agent: agents/website/editor
+- name: visual-design
+  type: reflection
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh visual-design
+  depends_on:
+  - copy-review
+  reflection:
+    rubric_path: pipelines/website/rubrics/visual-design.yaml
+    max_iterations: 2
+    reviewer_isolation: fresh
+  output_contract: pipelines/website/contracts/visual-design.yaml
+  agent: agents/website/visual-designer
+- name: design-handoff
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh design-handoff
+  depends_on:
+  - visual-design
+  output_contract: pipelines/website/contracts/design-handoff.yaml
+  agent: agents/website/visual-designer
+- name: design-approval
+  type: approval
+  depends_on:
+  - design-handoff
+  approval_options:
+  - value: approve
+    label: Approve design
+    is_default: true
+  - value: revise
+    label: Revise design
+  - value: approve-with-notes
+    label: Approve with notes
+- name: implement-page
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh implement-page
+  depends_on:
+  - design-approval
+  timeout: 1200
+  output_contract: pipelines/website/contracts/implementation.yaml
+  agent: agents/engineering/frontend-engineer
+- name: write-tests
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh write-tests
+  depends_on:
+  - implement-page
+  output_contract: pipelines/website/contracts/test-results.yaml
+  agent: agents/website/qa
+- name: accessibility-audit
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh accessibility-audit
+  depends_on:
+  - implement-page
+  parallel: true
+  agent: agents/website/qa
+- name: performance-check
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh performance-check
+  depends_on:
+  - implement-page
+  parallel: true
+  agent: agents/website/performance-guardian
+- name: seo-verify
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh seo-verify
+  depends_on:
+  - implement-page
+  parallel: true
+  agent: agents/website/seo
+- name: visual-qa
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh visual-qa
+  depends_on:
+  - write-tests
+  - accessibility-audit
+  - performance-check
+  - seo-verify
+  agent: agents/website/qa
+- name: pre-launch-checklist
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh pre-launch-checklist
+  depends_on:
+  - visual-qa
+  guardrails:
+  - name: no-critical-issues
+    check: critical_count == 0
+    on_fail: block
+    severity: critical
+  agent: agents/website/qa
+- name: brand-compliance-check
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh brand-compliance-check
+  depends_on:
+  - visual-qa
+  parallel: true
+  agent: agents/website/editor
+- name: qa-approval
+  type: approval
+  depends_on:
+  - pre-launch-checklist
+  - brand-compliance-check
+  approval_options:
+  - value: pass
+    label: Pass - deploy
+    is_default: true
+  - value: pass-with-notes
+    label: Pass with minor issues
+  - value: blocked
+    label: Blocked - fix required
+- name: staging-deploy
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh staging-deploy
+  depends_on:
+  - qa-approval
+  agent: agents/engineering/frontend-engineer
+- name: e2e-staging-test
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh e2e-staging-test
+  depends_on:
+  - staging-deploy
+  agent: agents/website/qa
+- name: deploy-approval
+  type: approval
+  depends_on:
+  - e2e-staging-test
+  approval_options:
+  - value: deploy-production
+    label: Deploy to production
+    is_default: true
+  - value: rollback
+    label: Rollback staging
+  - value: hold
+    label: Hold for now
+- name: production-deploy
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh production-deploy
+  depends_on:
+  - deploy-approval
+  condition: $deploy-approval.value == 'deploy-production'
+  agent: agents/engineering/frontend-engineer
+- name: post-deploy-verify
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh post-deploy-verify
+  depends_on:
+  - production-deploy
+  agent: agents/website/seo
+- name: configure-freshness
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh configure-freshness
+  depends_on:
+  - post-deploy-verify
+  agent: agents/website/freshness-monitor
+- name: configure-performance
+  type: command
+  command: bash /Users/luminamao/Documents/Github/openclaw/extensions/clawpipe/e2e/scripts/website/mock-stage.sh configure-performance
+  depends_on:
+  - post-deploy-verify
+  parallel: true
+  agent: agents/website/performance-guardian
+quality:
+  weights:
+    confidence: 0.25
+    cost: 0.15
+    completeness: 0.25
+    feedback: 0.2
+    speed: 0.15
+  regression_threshold: 0.2
+  baseline_window: 5
+goals:
+- name: brand-consistency
+  description: All pages match brand design tokens
+  metric_ref: quality.composite
+  target: '>=0.85'
+  alert_threshold: 0.75
+  evaluation_frequency: per_run
+- name: wcag-compliance
+  description: Zero WCAG AA violations
+  metric_ref: accessibility.critical_count
+  target: ==0
+  evaluation_frequency: per_run
+- name: page-speed
+  description: LCP under 2.5s
+  metric_ref: performance.lcp_ms
+  target: <=2500
+  alert_threshold: 3000
+  evaluation_frequency: per_run
+guardrails:
+- name: brand-guide-or-url
+  check: file_exists('tenants/${site_slug}/brands/brand-guide.md') or args.get('site_url')
+  on_fail: block
+  description: Need brand guide or site URL for brand signal extraction
+  severity: critical
+- name: site-slug-valid
+  check: args.get('site_slug') in ['acme-corp', 'example-org', 'demo-site']
+  on_fail: block
+  description: Site slug must be a valid tenant
+  severity: critical

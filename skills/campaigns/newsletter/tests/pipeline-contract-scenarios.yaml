@@ -1,0 +1,181 @@
+version: "1.0"
+target:
+  type: skill
+  path: skills/marketing/email/newsletter
+  trigger: /send-newsletter
+
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+
+scenarios:
+  # T020b: Delegated latitude — binding fields hold, non-binding phrasing may vary
+  - name: delegated-latitude-preserves-binding
+    description: "Running the same newsletter draft contract twice with delegated.word_choice: true produces drafts where binding fields (persona, sign-off, required sections, prohibited words) remain constant while non-binding phrasing may vary without verification failure."
+    tags: [contract, identity, p0]
+
+    when:
+      invoke: /send-newsletter Sunday Service draft only and wait for Austin approval
+      params:
+        test_mode: true
+
+    then:
+      - type: artifact_exists
+        path: memory/drafts/{{today}}-sunday-service.md
+        timeout: 180
+        updated_after: "{{run_started_at}}"
+
+      # Binding: persona must match contract
+      - type: artifact_contains
+        path: memory/drafts/{{today}}-sunday-service.md
+        sections: [Step A, Step B, Step C, Step D, cta]
+
+      # Binding: sign-off must match contract
+      - type: artifact_contains
+        path: memory/drafts/{{today}}-sunday-service.md
+        sections: [signature]
+
+      # Binding: prohibited words must be absent
+      - type: artifact_absent_words
+        path: memory/drafts/{{today}}-sunday-service.md
+        words:
+          - Sacred
+          - Miracle
+          - Therapy
+          - Spirit Guide
+          - Breakthrough
+          - Transformational
+
+      # Binding: word count limit from contract
+      - type: state_file
+        path: memory/pipelines/newsletter-{{today}}.yaml
+        fields:
+          stages.draft.verification_status: pass
+
+  # T021: Binding enforcement — prohibited word triggers verification failure
+  - name: binding-violation-halts-pipeline
+    description: "When a draft contains a prohibited word from the binding contract, onSubagentEnded catches the violation and the pipeline halts with verification failure."
+    tags: [contract, negative, p0]
+
+    when:
+      invoke: /send-newsletter Sunday Service draft only. After the copywriter produces the draft, manually insert the word 'Sacred' into the draft body, then run the contract verification step. The pipeline must halt.
+      params:
+        test_mode: true
+        inject_violation: "Sacred"
+
+    then:
+      # Pipeline state should show verification failure
+      - type: state_file
+        path: memory/pipelines/newsletter-{{today}}.yaml
+        fields:
+          stages.draft.verification_status: fail
+
+      # Gate step should NOT have been reached
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "sessions_spawn.*agents-marketing-brand.*gate"
+        absent: true
+
+      # Delivery should NOT have been attempted
+      - type: tool_not_called
+        tool: outbound.submit
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+  # T029b(1): Full newsletter pipeline with contracts
+  - name: newsletter-full-pipeline-contracts
+    description: "Full newsletter pipeline (trend -> brief -> draft -> gate, stop before deliver) produces handoff contracts in memory/pipelines/, the draft contains the binding persona and sign-off, prohibited words are absent, the gate contains the correct checklist criteria, and pipeline state shows all stages completed."
+    tags: [contract, pipeline, p0]
+
+    when:
+      invoke: /send-newsletter Sunday Service draft only and wait for Austin approval
+      params:
+        test_mode: true
+
+    then:
+      # Delegation to copywriter occurred
+      - type: delegation_occurred
+        from: newsletter-orchestrator
+        to: agents-marketing-copywriter
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+      # Delegation to brand guardian occurred
+      - type: delegation_occurred
+        from: newsletter-orchestrator
+        to: agents-marketing-brand
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+      # Handoff contracts written to pipeline directory
+      - type: artifact_exists
+        path: memory/pipelines/newsletter-{{today}}.yaml
+        timeout: 180
+        updated_after: "{{run_started_at}}"
+
+      # Draft artifact exists with binding persona and sign-off
+      - type: artifact_exists
+        path: memory/drafts/{{today}}-sunday-service.md
+        timeout: 180
+        updated_after: "{{run_started_at}}"
+
+      - type: artifact_contains
+        path: memory/drafts/{{today}}-sunday-service.md
+        sections: [Step A, signature]
+
+      # Prohibited words absent from draft
+      - type: artifact_absent_words
+        path: memory/drafts/{{today}}-sunday-service.md
+        words:
+          - Sacred
+          - Miracle
+          - Therapy
+          - Spirit Guide
+          - Breakthrough
+          - Transformational
+
+      # Gate output has the correct checklist criteria
+      - type: artifact_contains
+        path: memory/drafts/{{today}}-sunday-service.md
+        sections: [Brand Gate, gate_status]
+
+      # Pipeline state shows stages completed
+      - type: state_file
+        path: memory/pipelines/newsletter-{{today}}.yaml
+        fields:
+          stages.draft.verification_status: pass
+          stages.gate.verification_status: pass
+
+      # Delivery not attempted (waiting for approval)
+      - type: tool_not_called
+        tool: outbound.submit
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"
+
+  # T029b(2): Binding violation halts at verification (pipeline-level)
+  - name: newsletter-binding-violation-halts
+    description: "Injecting a prohibited word into the draft after the copywriter produces it causes the contract verification to fail and the pipeline to halt before the gate step."
+    tags: [contract, negative, pipeline, p0]
+
+    when:
+      invoke: /send-newsletter Sunday Service draft only. After the copywriter draft completes, inject the word 'Sacred' into the body, then proceed with contract verification. Expect failure.
+      params:
+        test_mode: true
+        inject_violation: "Sacred"
+
+    then:
+      - type: state_file
+        path: memory/pipelines/newsletter-{{today}}.yaml
+        fields:
+          stages.draft.verification_status: fail
+
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "sessions_spawn.*agents-marketing-brand.*gate"
+        absent: true
+
+      - type: tool_not_called
+        tool: outbound.submit
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"

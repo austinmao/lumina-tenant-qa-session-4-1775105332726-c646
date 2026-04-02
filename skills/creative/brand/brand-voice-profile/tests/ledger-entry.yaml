@@ -1,0 +1,32 @@
+target_id: skills/creative/brand/brand-voice-profile
+type: skill
+tier: interior-skill
+status: baseline-captured
+contracts:
+  scenario_file: skills/creative/brand/brand-voice-profile/tests/scenarios.yaml
+  handoff_files: []
+  pipeline_file: null
+coverage:
+  smoke: true
+  negative: true
+  permission: true
+  identity: false
+  token_budget: true
+  governance: false
+  handoffs_complete: false
+  pipeline_complete: false
+  regression_baseline: false
+verification:
+  mode: generated
+  approved_smoke_scenario: smoke-basic
+  approved_command: null
+  evidence_paths: []
+  static_validated_at: null
+  last_live_smoke_at: null
+  last_live_smoke_status: null
+  last_baseline_at: null
+deferred_hardening:
+- LLM judge parsing remains heuristic; confirm rubric stability after first live run.
+- Gateway token logging hardening remains deferred until the downstream ClawSpec bridge
+  is verified.
+notes: []

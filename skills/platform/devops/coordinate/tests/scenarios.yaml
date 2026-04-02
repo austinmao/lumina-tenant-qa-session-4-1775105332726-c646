@@ -1,0 +1,54 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/platform/devops/coordinate
+  trigger: /coordinate
+defaults:
+  timeout: 45
+  test_mode: true
+  poll_interval: 3
+scenarios:
+- name: smoke-basic
+  description: Smoke coverage for platform/devops/coordinate
+  tags:
+  - smoke
+  - interior-skill
+  given:
+  - type: file_absent
+    path: memory/drafts/platform-devops-coordinate-artifact.md
+  when:
+    invoke: /coordinate
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/platform-devops-coordinate-artifact.md
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-out-of-scope
+  description: Negative coverage for unsupported behavior
+  tags:
+  - negative
+  - interior-skill
+  when:
+    invoke: /coordinate do something forbidden
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: send_message
+  - &id001
+    type: no_span_errors
+- name: permission-guardrails
+  description: Permission boundaries remain intact
+  tags:
+  - permission
+  when:
+    invoke: /coordinate
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: external_write
+  - *id001

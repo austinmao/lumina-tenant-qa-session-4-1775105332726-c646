@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/orchestration/webinar-orchestration
+  trigger: /webinar-orchestration
+defaults:
+  timeout: 120
+  test_mode: true
+scenarios:
+- name: webinar-orchestration-smoke
+  description: Create a webinar presentation outline using the Perfect Webinar framework.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /webinar-orchestration Create a webinar outline for "Nervous System Safety"
+      targeting founders
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/webinar-outline.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/webinar-outline.md
+    sections:
+    - outline
+    - Secret
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: webinar-orchestration-edge-no-offer
+  description: Webinar without a defined offer still produces a valid outline with
+    a placeholder CTA.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /webinar-orchestration Create educational webinar without a specific offer
+      or price point
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/webinar-outline.md
+    sections:
+    - CTA
+  - type: no_span_errors

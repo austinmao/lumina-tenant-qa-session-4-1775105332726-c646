@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/sms/sms-campaigns
+  trigger: /sms-campaigns
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: sms-campaigns-smoke
+  description: Draft an SMS campaign with message copy and send schedule.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /sms-campaigns Draft a retreat reminder SMS for upcoming Awaken Together
+      retreat
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/sms-campaign-draft.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/sms-campaign-draft.md
+    sections:
+    - SMS
+    - retreat
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: sms-campaigns-edge-character-limit
+  description: SMS messages exceeding 160 characters are flagged with a warning.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /sms-campaigns Draft a detailed SMS with full retreat description and
+      pricing details
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/sms-campaign-draft.md
+    sections:
+    - character
+  - type: no_span_errors

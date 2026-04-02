@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/devops/cdn-r2
+  trigger: /cdn-r2
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: cdn-r2-smoke
+  description: CDN R2 setup produces bucket config and delivery spec.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /cdn-r2 example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/cdn-r2-setup.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/cdn-r2-setup.md
+    sections:
+    - R2
+    - Bucket
+    - CDN
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: cdn-r2-missing-creds
+  description: Missing R2 credentials blocks setup.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /cdn-r2 example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/cdn-r2-setup.md
+    sections:
+    - R2_ACCESS_KEY_ID
+  - type: no_span_errors

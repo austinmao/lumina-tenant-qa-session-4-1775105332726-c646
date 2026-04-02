@@ -1,0 +1,68 @@
+version: "1.0"
+pipeline:
+  name: newsletter
+  skill_path: skills/marketing/email/newsletter
+  trigger: /send-newsletter
+  stages: 10
+  estimated_duration: 30m
+stages:
+  - name: segment
+    agent: skills-newsletter-sub-skills-segment
+    produces: memory/drafts/{{today}}-sunday-service-segment.md
+    handoff_contract: tests/handoffs/newsletter-to-segment.yaml
+  - name: brief
+    agent: skills-newsletter-sub-skills-brief
+    produces: memory/drafts/{{today}}-sunday-service-brief.md
+    handoff_contract: tests/handoffs/segment-to-brief.yaml
+  - name: draft
+    agent: skills-newsletter-sub-skills-draft
+    produces: memory/drafts/{{today}}-sunday-service.md
+    handoff_contract: tests/handoffs/brief-to-draft.yaml
+  - name: gate
+    agent: skills-newsletter-sub-skills-gate
+    produces: memory/drafts/{{today}}-sunday-service.md
+    handoff_contract: tests/handoffs/draft-to-gate.yaml
+  - name: email_e2e
+    agent: skills-qa-email-e2e
+    produces: /tmp/newsletter-e2e-{{today}}.html
+  - name: qa_orchestrator
+    agent: agents-qa-engineer
+    produces: memory/logs/retry/{{today}}-newsletter-email-e2e.md
+  - name: approval
+    requires_approval: true
+  - name: deliver
+    agent: skills-newsletter-sub-skills-deliver
+    produces: memory/logs/sends/{{today}}-sunday-service.md
+    handoff_contract: tests/handoffs/gate-to-deliver.yaml
+  - name: re_engage
+    agent: skills-newsletter-sub-skills-re-engage
+    produces: memory/logs/suppressions/{{today}}.md
+    handoff_contract: tests/handoffs/deliver-to-re-engage.yaml
+  - name: analytics
+    agent: skills-newsletter-sub-skills-analytics
+    produces: memory/logs/analytics-summary.md
+    handoff_contract: tests/handoffs/deliver-to-analytics.yaml
+final_assertions:
+  deterministic:
+    - type: artifact_exists
+      path: memory/drafts/{{today}}-sunday-service.md
+    - type: artifact_exists
+      path: /tmp/newsletter-e2e-{{today}}.html
+    - type: artifact_exists
+      path: memory/logs/sends/{{today}}-sunday-service.md
+    - type: artifact_exists
+      path: memory/logs/analytics-summary.md
+  semantic:
+    - type: llm_judge
+      path: memory/drafts/{{today}}-sunday-service.md
+      rubric: |
+        Score 1-5. The newsletter should preserve the brand's grounded voice,
+        single-destination CTA discipline, and approval-first workflow.
+      pass_threshold: 3
+pipeline_health:
+  - description: All artifact-producing stages completed.
+    check: count(produced_artifacts) == count(stages_with_produces)
+  - description: Every recorded handoff contract passed.
+    check: all handoff contracts passed
+  - description: Pipeline stays inside the documented execution window.
+    check: elapsed <= 30m

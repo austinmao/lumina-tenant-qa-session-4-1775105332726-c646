@@ -1,0 +1,19 @@
+{
+  "id": "lumina-relay",
+  "name": "Lumina Relay Channel Plugin",
+  "version": "1.0.0",
+  "description": "Hub relay — registers relay_forward tool for the relay agent to forward messages to tenant instances.",
+  "entrypoint": "index.ts",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["hub", "tenant"],
+        "default": "hub",
+        "description": "Relay mode"
+      }
+    },
+    "additionalProperties": false
+  }
+}

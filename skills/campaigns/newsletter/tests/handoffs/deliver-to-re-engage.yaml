@@ -1,0 +1,26 @@
+version: "1.0"
+handoff:
+  from: skills-newsletter-sub-skills-deliver
+  to: skills-newsletter-sub-skills-re-engage
+  mechanism: sessions_spawn
+caller_provides:
+  required_context:
+    - name: send_summary
+      description: Delivery IDs, send counts, and suppression prerequisites from the completed send.
+  required_artifacts:
+    - path_pattern: memory/logs/sends/{{today}}-sunday-service.md
+      description: Send report consumed by the re-engage cleanup step.
+callee_produces:
+  required_artifacts:
+    - path_pattern: memory/logs/suppressions/{{today}}.md
+      description: Suppression cleanup report after the re-engage pass.
+      required_sections:
+        - Suppression Log
+  prohibited_actions:
+    - tool: delete_attio_record
+      reason: Re-engage cleanup must retain Attio history.
+assertions:
+  post_delegation:
+    - type: artifact_exists
+      path: memory/logs/suppressions/{{today}}.md
+

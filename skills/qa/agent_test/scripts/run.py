@@ -1,0 +1,1030 @@
+from __future__ import annotations
+
+import argparse
+import glob
+import json
+import os
+import re
+import subprocess
+import sys
+from collections import defaultdict
+from datetime import datetime, timezone
+from functools import cache
+from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
+import httpx
+import yaml
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+    from skills.qa.agent_test.scripts.discover import discover_scenarios
+    from skills.qa.evaluate.scripts.assertions import AssertionDispatchError, dispatch_assertion
+    from skills.qa.evaluate.scripts.evaluate import evaluate_contract
+    from skills.qa.evaluate.scripts.schema_validator import validate_contract_file
+    from skills.qa.evaluate.scripts.template_expander import (
+        build_template_context,
+        expand_templates,
+    )
+    from skills.qa.validate.scripts.validate import validate_target
+else:
+    from ...evaluate.scripts.assertions import AssertionDispatchError, dispatch_assertion
+    from ...evaluate.scripts.evaluate import evaluate_contract
+    from ...evaluate.scripts.schema_validator import validate_contract_file
+    from ...evaluate.scripts.template_expander import build_template_context, expand_templates
+    from ...validate.scripts.validate import validate_target
+    from .discover import discover_scenarios
+
+
+GATEWAY_BASE = "http://127.0.0.1:18789"
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[4]
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _iso_timestamp(value: datetime | None = None) -> str:
+    return (value or _utc_now()).astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _slug(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "run"
+
+
+def _load_yaml(path: str | Path) -> dict[str, Any]:
+    loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+    if not isinstance(loaded, dict):
+        raise ValueError(f"{path} must contain a top-level mapping")
+    return loaded
+
+
+def _scenario_lookup(scenario_file: str | Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    contract = _load_yaml(scenario_file)
+    scenarios = contract.get("scenarios", [])
+    if not isinstance(scenarios, list):
+        raise ValueError(f"{scenario_file} is missing a scenarios list")
+    mapping = {
+        str(item.get("name")): item
+        for item in scenarios
+        if isinstance(item, dict) and item.get("name")
+    }
+    return contract, mapping
+
+
+def _resolve_target_file(repo_root: Path, *, target_type: str, target_path: str) -> Path:
+    file_name = "SKILL.md" if target_type == "skill" else "SOUL.md"
+    return repo_root / target_path / file_name
+
+
+def _openclaw_command(*args: str, openclaw_profile: str | None = None) -> list[str]:
+    cmd = ["openclaw"]
+    if openclaw_profile:
+        cmd.extend(["--profile", openclaw_profile])
+    cmd.extend(args)
+    return cmd
+
+
+def _skill_target_metadata(entry: dict[str, Any], *, invoke: str) -> dict[str, str]:
+    trigger = str(entry.get("trigger") or invoke).strip()
+    command = trigger.split()[0] if trigger else ""
+    skill_name = command[1:] if command.startswith("/") else command
+    metadata = {
+        "target_path": str(entry.get("target_path") or "").strip(),
+        "target_type": str(entry.get("target_type") or "").strip(),
+        "target_skill_name": skill_name.strip(),
+    }
+    return {key: value for key, value in metadata.items() if value}
+
+
+def _target_label(entry: dict[str, Any]) -> str:
+    return entry.get("target_path") or entry.get("target_name") or entry.get("target_type") or "target"
+
+
+def _next_run_number(repo_root: Path, *, workflow: str, scenario: str) -> int:
+    report_dir = repo_root / "memory" / "logs" / "qa"
+    if not report_dir.exists():
+        return 1
+    pattern = f"*-{_slug(workflow)}-{_slug(scenario)}-r*.yaml"
+    existing = list(report_dir.glob(pattern))
+    if not existing:
+        return 1
+
+    run_numbers: list[int] = []
+    for report in existing:
+        match = re.search(r"-r(\d+)\.yaml$", report.name)
+        if match:
+            run_numbers.append(int(match.group(1)))
+    return max(run_numbers, default=0) + 1
+
+
+def _evaluate_preconditions(
+    scenario: dict[str, Any],
+    *,
+    repo_root: Path,
+    run_id: str,
+    gateway_log_path: str,
+    run_started_at: str,
+) -> list[dict[str, Any]]:
+    context = build_template_context(
+        repo_root=repo_root,
+        now=_utc_now(),
+        extra={
+            "run_id": run_id,
+            "gateway_log_path": gateway_log_path,
+            "run_started_at": run_started_at,
+        },
+    )
+    expanded = expand_templates(scenario.get("given", []), context)
+    results: list[dict[str, Any]] = []
+    for assertion in expanded:
+        try:
+            result = dispatch_assertion(assertion, context)
+        except AssertionDispatchError as exc:
+            result = {
+                "name": assertion.get("type", "unknown"),
+                "status": "ERROR",
+                "detail": str(exc),
+                "elapsed": "0s",
+            }
+        results.append(result)
+    return results
+
+
+def _preconditions_passed(results: list[dict[str, Any]]) -> bool:
+    return all(item.get("status") == "PASS" for item in results)
+
+
+def _negative_coverage_errors(
+    discovered: list[dict[str, Any]],
+    *,
+    target_paths: set[str],
+) -> list[str]:
+    by_target: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for entry in discovered:
+        if entry["target_path"] in target_paths:
+            by_target[entry["target_path"]].append(entry)
+
+    missing: list[str] = []
+    for target_path in sorted(target_paths):
+        scenarios = by_target.get(target_path, [])
+        if not any("negative" in item.get("tags", []) for item in scenarios):
+            missing.append(target_path)
+    return missing
+
+
+def _hooks_token(explicit: str | None = None) -> str | None:
+    if explicit:
+        return explicit
+    return os.environ.get("HOOKS_TOKEN") or os.environ.get("OPENCLAW_HOOKS_TOKEN")
+
+
+def _expand_scenario_for_execution(
+    scenario: dict[str, Any],
+    *,
+    repo_root: Path,
+    run_id: str,
+    gateway_log_path: str,
+    run_started_at: str,
+) -> dict[str, Any]:
+    context = build_template_context(
+        repo_root=repo_root,
+        now=_utc_now(),
+        extra={
+            "run_id": run_id,
+            "gateway_log_path": gateway_log_path,
+            "run_started_at": run_started_at,
+        },
+    )
+    expanded = expand_templates(scenario, context)
+    if not isinstance(expanded, dict):
+        raise ValueError(f"Expanded scenario must remain a mapping: {scenario.get('name')}")
+    return expanded
+
+
+@cache
+def _registered_agents(openclaw_profile: str | None = None) -> tuple[dict[str, Any], ...]:
+    result = subprocess.run(
+        _openclaw_command("agents", "list", "--json", openclaw_profile=openclaw_profile),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(result.stdout or "[]")
+    if not isinstance(payload, list):
+        raise ValueError("openclaw agents list --json must return a list")
+    return tuple(item for item in payload if isinstance(item, dict))
+
+
+def _agent_id_from_trigger(trigger: str) -> str | None:
+    match = re.search(r'agentId:\s*["\']?([^,"\')]+)', trigger)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def _resolve_agent_id(
+    entry: dict[str, Any],
+    *,
+    repo_root: Path,
+    openclaw_profile: str | None = None,
+) -> str:
+    workspace = str((repo_root / entry["target_path"]).resolve())
+    try:
+        matches = [
+            str(item.get("id", "")).strip()
+            for item in _registered_agents(openclaw_profile)
+            if str(item.get("workspace", "")).strip() == workspace
+        ]
+    except Exception:
+        matches = []
+
+    if len(matches) == 1 and matches[0]:
+        return matches[0]
+
+    trigger = str(entry.get("trigger", "")).strip()
+    parsed = _agent_id_from_trigger(trigger)
+    if parsed:
+        return parsed
+    if trigger:
+        return trigger
+    raise ValueError(f"Unable to resolve agent id for {entry.get('target_path')}")
+
+
+def _agent_message(scenario: dict[str, Any]) -> str:
+    when = scenario.get("when", {}) if isinstance(scenario.get("when"), dict) else {}
+    invoke = str(when.get("invoke", "")).strip()
+    params = when.get("params", {}) if isinstance(when.get("params"), dict) else {}
+    if invoke == "sessions_spawn":
+        task = str(params.get("task", "")).strip()
+        if not task:
+            raise ValueError(f"Scenario {scenario.get('name')} is missing when.params.task")
+        return task
+    if invoke:
+        return invoke
+    raise ValueError(f"Scenario {scenario.get('name')} is missing when.invoke")
+
+
+def _parse_json_payload(text: str) -> dict[str, Any]:
+    stripped = text.strip()
+    if not stripped:
+        return {}
+    try:
+        payload = json.loads(stripped)
+    except json.JSONDecodeError:
+        start = stripped.find("{")
+        end = stripped.rfind("}")
+        if start < 0 or end < start:
+            raise
+        payload = json.loads(stripped[start : end + 1])
+    if not isinstance(payload, dict):
+        raise ValueError("Expected JSON object payload")
+    return payload
+
+
+def _trigger_agent_scenario(
+    entry: dict[str, Any],
+    scenario: dict[str, Any],
+    *,
+    repo_root: Path,
+    openclaw_profile: str | None = None,
+) -> dict[str, Any]:
+    agent_id = _resolve_agent_id(entry, repo_root=repo_root, openclaw_profile=openclaw_profile)
+    message = _agent_message(scenario)
+
+    result = subprocess.run(
+        _openclaw_command(
+            "agent",
+            "--local",
+            "--agent",
+            agent_id,
+            "--message",
+            message,
+            "--json",
+            openclaw_profile=openclaw_profile,
+        ),
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=str(repo_root),
+        timeout=600,
+    )
+    payload = _parse_json_payload(result.stdout or "{}")
+    run_id = (
+        payload.get("meta", {}).get("agentMeta", {}).get("sessionId")
+        if isinstance(payload.get("meta"), dict)
+        else None
+    )
+    return {
+        "status": "completed",
+        "run_id": run_id or str(uuid4()),
+        "response": payload,
+    }
+
+
+def _trigger_scenario(
+    entry: dict[str, Any],
+    scenario: dict[str, Any],
+    *,
+    repo_root: Path,
+    gateway_base: str,
+    hooks_token: str | None,
+    requested_session_key: str | None = None,
+    openclaw_profile: str | None = None,
+) -> dict[str, Any]:
+    if entry.get("target_type") == "agent":
+        return _trigger_agent_scenario(
+            entry,
+            scenario,
+            repo_root=repo_root,
+            openclaw_profile=openclaw_profile,
+        )
+
+    invoke = str(scenario.get("when", {}).get("invoke", "")).strip()
+    params = scenario.get("when", {}).get("params", {}) or {}
+    if not invoke:
+        raise ValueError(f"Scenario {scenario.get('name')} is missing when.invoke")
+
+    headers = {"Content-Type": "application/json"}
+    if hooks_token:
+        headers["Authorization"] = f"Bearer {hooks_token}"
+
+    endpoint = f"{gateway_base}/webhook/mcp-skill-invoke"
+    if invoke.startswith("/"):
+        body = {
+            "skill_command": invoke,
+            "payload": json.dumps(params, sort_keys=True) if params else "",
+            "test_mode": bool(params.get("test_mode", True)),
+        }
+        body.update(_skill_target_metadata(entry, invoke=invoke))
+    else:
+        body = {
+            "skill_command": entry.get("trigger") or invoke,
+            "payload": json.dumps(
+                {
+                    "invoke": invoke,
+                    "params": params,
+                    "target": entry.get("target_path"),
+                    "target_type": entry.get("target_type"),
+                },
+                sort_keys=True,
+            ),
+            "test_mode": bool(params.get("test_mode", True)),
+        }
+        body.update(_skill_target_metadata(entry, invoke=invoke))
+    if requested_session_key:
+        body["session_key"] = requested_session_key
+
+    response = httpx.post(endpoint, headers=headers, json=body, timeout=30.0)
+    response.raise_for_status()
+    payload = response.json() if response.content else {}
+    if not isinstance(payload, dict):
+        payload = {}
+    return {
+        "status": payload.get("status", "accepted"),
+        "run_id": payload.get("runId") or payload.get("run_id") or str(uuid4()),
+        "response": payload,
+    }
+
+
+def _result_bucket(report: dict[str, Any]) -> str:
+    if report.get("infrastructure_failure") or report.get("status") == "ERROR":
+        return "INFRASTRUCTURE"
+    if report.get("status") == "FAIL":
+        return "FAIL"
+    if report.get("status") == "WARN":
+        return "WARN"
+    return "PASS"
+
+
+def _synthetic_report(
+    *,
+    entry: dict[str, Any],
+    scenario_name: str,
+    mode: str,
+    status: str,
+    detail: str,
+    assertions: list[dict[str, Any]] | None = None,
+    infrastructure_failure: bool = False,
+) -> dict[str, Any]:
+    return {
+        "workflow": Path(entry["target_path"]).name,
+        "scenario": scenario_name,
+        "run": 0,
+        "status": status,
+        "detail": detail,
+        "report_path": None,
+        "infrastructure_failure": infrastructure_failure,
+        "assertions": assertions or [],
+        "mode": mode,
+    }
+
+
+def _resolve_pipeline_relative_path(
+    contract_path: Path,
+    *,
+    skill_path: str,
+    relative_path: str,
+) -> Path:
+    relative = Path(relative_path)
+    if relative.is_absolute():
+        return relative
+
+    expected_suffix = Path(skill_path) / "tests" / contract_path.name
+    for ancestor in contract_path.parents:
+        if ancestor / expected_suffix == contract_path:
+            return ancestor / skill_path / relative
+
+    if contract_path.parent.name == "tests":
+        return contract_path.parent.parent / relative
+    return contract_path.parent / relative
+
+
+def _expand_path_pattern(
+    value: str,
+    *,
+    repo_root: Path,
+    now: datetime,
+    extra: dict[str, Any] | None = None,
+) -> str:
+    context = build_template_context(repo_root=repo_root, now=now, extra=extra or {})
+    expanded = expand_templates(value, context)
+    if isinstance(expanded, str) and not Path(expanded).is_absolute():
+        return str(repo_root / expanded)
+    return str(expanded)
+
+
+def _artifact_matches(
+    pattern: str,
+    *,
+    repo_root: Path,
+    now: datetime,
+    extra: dict[str, Any] | None = None,
+) -> list[Path]:
+    expanded = _expand_path_pattern(pattern, repo_root=repo_root, now=now, extra=extra)
+    return sorted(Path(path) for path in glob.glob(expanded))
+
+
+def _parse_duration_literal(value: str) -> int:
+    literal = value.strip().lower()
+    match = re.fullmatch(r"(\d+)([mh])", literal)
+    if not match:
+        raise ValueError(f"Unsupported duration literal: {value}")
+    amount = int(match.group(1))
+    unit = match.group(2)
+    return amount * 60 if unit == "m" else amount * 3600
+
+
+def _handoff_passed(report: dict[str, Any]) -> bool:
+    if report.get("infrastructure_failure"):
+        return False
+    return str(report.get("status")) in {"PASS", "WARN"}
+
+
+def _classify_assertions(assertions: list[dict[str, Any]]) -> str:
+    statuses = [str(assertion.get("status")) for assertion in assertions]
+    if "ERROR" in statuses:
+        return "ERROR"
+    if "FAIL" in statuses:
+        return "FAIL"
+    if "WARN" in statuses:
+        return "WARN"
+    return "PASS"
+
+
+def _monitor_pipeline_stages(
+    *,
+    contract: dict[str, Any],
+    repo_root: Path,
+    now: datetime,
+    evaluate_handoff,
+    run_id: str = "",
+    contract_path: Path | None = None,
+) -> dict[str, Any]:
+    stages = contract.get("stages", []) if isinstance(contract.get("stages"), list) else []
+    pipeline = contract.get("pipeline", {}) if isinstance(contract.get("pipeline"), dict) else {}
+    skill_path = str(pipeline.get("skill_path", "")).strip()
+
+    stage_results: list[dict[str, Any]] = []
+    handoff_reports: list[dict[str, Any]] = []
+    produced_artifacts = 0
+    stages_with_produces = 0
+
+    for stage in stages:
+        if not isinstance(stage, dict):
+            continue
+        produces = str(stage.get("produces", "")).strip()
+        requires_approval = bool(stage.get("requires_approval", False))
+        artifacts: list[str] = []
+        produced = False
+        skipped = False
+        if produces:
+            stages_with_produces += 1
+            matches = _artifact_matches(produces, repo_root=repo_root, now=now)
+            artifacts = [str(path) for path in matches]
+            produced = bool(matches)
+            if produced:
+                produced_artifacts += 1
+            elif not requires_approval:
+                skipped = True
+
+        handoff_ref = str(stage.get("handoff_contract", "")).strip()
+        handoff_report = None
+        if handoff_ref and contract_path is not None and (produced or not produces):
+            handoff_path = _resolve_pipeline_relative_path(
+                contract_path,
+                skill_path=skill_path,
+                relative_path=handoff_ref,
+            )
+            handoff_report = evaluate_handoff(handoff_path, run_id)
+            handoff_reports.append(handoff_report)
+
+        stage_results.append(
+            {
+                "name": stage.get("name"),
+                "agent": stage.get("agent"),
+                "produces": produces or None,
+                "artifacts": artifacts,
+                "produced": produced,
+                "requires_approval": requires_approval,
+                "skipped": skipped,
+                "handoff_contract": handoff_ref or None,
+                "handoff_status": handoff_report.get("status") if isinstance(handoff_report, dict) else None,
+            }
+        )
+
+    return {
+        "stages": stage_results,
+        "produced_artifacts": produced_artifacts,
+        "stages_with_produces": stages_with_produces,
+        "handoff_reports": handoff_reports,
+    }
+
+
+def _evaluate_pipeline_health(
+    checks: list[dict[str, Any]],
+    *,
+    state: dict[str, Any],
+    elapsed_seconds: int,
+) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    produced_artifacts = int(state.get("produced_artifacts", 0))
+    stages_with_produces = int(state.get("stages_with_produces", 0))
+    handoff_reports = state.get("handoff_reports", []) or []
+
+    for check in checks:
+        description = str(check.get("description", "pipeline health")).strip() or "pipeline health"
+        expression = str(check.get("check", "")).strip()
+        status = "PASS"
+        detail = None
+        try:
+            if expression == "count(produced_artifacts) == count(stages_with_produces)":
+                passed = produced_artifacts == stages_with_produces
+                if not passed:
+                    status = "FAIL"
+                    detail = (
+                        "count(produced_artifacts) == count(stages_with_produces) failed: "
+                        f"{produced_artifacts} != {stages_with_produces}"
+                    )
+            elif expression == "all handoff contracts passed":
+                passed = all(_handoff_passed(report) for report in handoff_reports)
+                if not passed:
+                    status = "FAIL"
+                    detail = "all handoff contracts passed failed"
+            else:
+                match = re.fullmatch(r"elapsed\s*<=\s*(\d+[mh])", expression.lower())
+                if match:
+                    limit_seconds = _parse_duration_literal(match.group(1))
+                    if elapsed_seconds > limit_seconds:
+                        status = "FAIL"
+                        detail = (
+                            f"elapsed <= {match.group(1)} failed: "
+                            f"{elapsed_seconds}s > {limit_seconds}s"
+                        )
+                else:
+                    status = "ERROR"
+                    detail = f"Unsupported pipeline health expression: {expression}"
+        except Exception as exc:
+            status = "ERROR"
+            detail = str(exc)
+
+        results.append(
+            {
+                "name": f"pipeline_health:{description}",
+                "status": status,
+                "detail": detail,
+                "elapsed": "0s",
+            }
+        )
+    return results
+
+
+def _print_table(title: str, reports: list[dict[str, Any]]) -> None:
+    if not reports:
+        return
+    print(title)
+    print("| Scenario | Status | Mode | Detail | Report |")
+    print("|----------|--------|------|--------|--------|")
+    for report in reports:
+        detail = str(report.get("detail") or "").replace("\n", " ").strip()
+        print(
+            f"| {report['scenario']} | {report['status']} | {report.get('mode', 'RUN')} | "
+            f"{detail or '-'} | {report.get('report_path') or '-'} |"
+        )
+    print()
+
+
+def _execute_entry(
+    entry: dict[str, Any],
+    scenario: dict[str, Any],
+    *,
+    repo_root: Path,
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    gateway_log_path = f"/tmp/openclaw/openclaw-{_utc_now().date().isoformat()}.log"
+    provisional_run_id = str(uuid4())
+    run_started_at = _iso_timestamp()
+    scenario_for_execution = _expand_scenario_for_execution(
+        scenario,
+        repo_root=repo_root,
+        run_id=provisional_run_id,
+        gateway_log_path=gateway_log_path,
+        run_started_at=run_started_at,
+    )
+    preconditions = _evaluate_preconditions(
+        scenario_for_execution,
+        repo_root=repo_root,
+        run_id=provisional_run_id,
+        gateway_log_path=gateway_log_path,
+        run_started_at=run_started_at,
+    )
+    if not _preconditions_passed(preconditions):
+        details = "; ".join(
+            f"{item['name']}: {item.get('detail') or item['status']}"
+            for item in preconditions
+            if item.get("status") != "PASS"
+        )
+        return _synthetic_report(
+            entry=entry,
+            scenario_name=scenario["name"],
+            mode="DRY-RUN" if args.dry_run else "RUN",
+            status="FAIL",
+            detail=f"Preconditions failed: {details}",
+            assertions=preconditions,
+        )
+
+    if args.dry_run:
+        return _synthetic_report(
+            entry=entry,
+            scenario_name=scenario["name"],
+            mode="DRY-RUN",
+            status="PASS",
+            detail="DRY-RUN: preconditions passed; scenario was not triggered.",
+            assertions=preconditions,
+        )
+
+    run_id = provisional_run_id
+    if not args.evaluate_only:
+        requested_session_key = (
+            f"hook:qa:{_slug(entry['target_path'])}:{_slug(scenario['name'])}:{provisional_run_id}"
+            if entry.get("target_type") == "skill"
+            else None
+        )
+        trigger = _trigger_scenario(
+            entry,
+            scenario_for_execution,
+            repo_root=repo_root,
+            gateway_base=args.gateway_base,
+            hooks_token=args.hooks_token,
+            requested_session_key=requested_session_key,
+            openclaw_profile=args.openclaw_profile,
+        )
+        run_id = str(trigger["run_id"])
+
+    run_number = _next_run_number(
+        repo_root,
+        workflow=Path(entry["target_path"]).name,
+        scenario=scenario["name"],
+    )
+    reports = evaluate_contract(
+        entry["scenario_file"],
+        run_number=run_number,
+        scenario_name=scenario["name"],
+        extra_context={
+            "run_id": run_id,
+            "gateway_log_path": gateway_log_path,
+            "run_started_at": run_started_at,
+        },
+    )
+    report = reports[0]
+    report["mode"] = "EVALUATE-ONLY" if args.evaluate_only else "RUN"
+    report.setdefault("detail", "")
+    return report
+
+
+def _run_pipeline(args: argparse.Namespace) -> int:
+    repo_root = Path(args.repo_root).resolve()
+    target = args.target or ""
+    target_path = target if target.startswith("skills/") else f"skills/{target}"
+    pipeline_path = repo_root / target_path / "tests" / "pipeline.yaml"
+    target_file = _resolve_target_file(repo_root, target_type="skill", target_path=target_path)
+
+    try:
+        validation = validate_target(target_file)
+    except Exception as exc:
+        print(f"Structural validation failed for {target_file}: {exc}")
+        return 1
+    if validation["status"] == "FAIL":
+        print(f"Structural validation failed for {target_file}")
+        for check in validation["checks"]:
+            if check["status"] == "FAIL":
+                print(f"- {check['name']}: {check.get('detail') or 'no detail'}")
+        return 1
+
+    pipeline_validation = validate_contract_file(pipeline_path)
+    if not pipeline_validation.valid:
+        print(f"Pipeline contract is invalid: {pipeline_path}")
+        for issue in pipeline_validation.errors:
+            print(f"- {issue.path}: {issue.message}")
+        return 1
+
+    contract = pipeline_validation.data or {}
+    trigger = str(contract.get("pipeline", {}).get("trigger", "")).strip()
+    if not trigger:
+        print(f"Pipeline contract is missing pipeline.trigger: {pipeline_path}")
+        return 1
+
+    if args.dry_run:
+        print("PIPELINE")
+        print("| Scenario | Status | Mode | Detail | Report |")
+        print("|----------|--------|------|--------|--------|")
+        print("| pipeline | PASS | DRY-RUN | DRY-RUN: pipeline contract validated; target was not triggered. | - |")
+        return 0
+
+    run_id = str(uuid4())
+    started_at = _utc_now()
+    if not args.evaluate_only:
+        entry = {
+            "target_path": target_path,
+            "target_type": "skill",
+            "trigger": trigger,
+        }
+        scenario = {"name": "pipeline", "when": {"invoke": trigger, "params": {"test_mode": True}}}
+        try:
+            response = _trigger_scenario(
+                entry,
+                scenario,
+                repo_root=repo_root,
+                gateway_base=args.gateway_base,
+                hooks_token=args.hooks_token,
+            )
+            run_id = str(response["run_id"])
+        except Exception as exc:
+            print("INFRASTRUCTURE")
+            print("| Scenario | Status | Mode | Detail | Report |")
+            print("|----------|--------|------|--------|--------|")
+            print(f"| pipeline | ERROR | RUN | {str(exc).replace('|', '/')} | - |")
+            return 1
+
+    def _evaluate_handoff(handoff_path: Path, active_run_id: str) -> dict[str, Any]:
+        reports = evaluate_contract(
+            handoff_path,
+            run_number=1,
+            extra_context={"run_id": active_run_id, "callee_run_id": active_run_id},
+        )
+        report = reports[0]
+        report["source_path"] = str(handoff_path)
+        return report
+
+    pipeline_state = _monitor_pipeline_stages(
+        contract=contract,
+        repo_root=repo_root,
+        now=started_at,
+        evaluate_handoff=_evaluate_handoff,
+        run_id=run_id,
+        contract_path=pipeline_path,
+    )
+
+    run_number = _next_run_number(repo_root, workflow=Path(target_path).name, scenario="pipeline")
+    try:
+        reports = evaluate_contract(
+            pipeline_path,
+            run_number=run_number,
+            extra_context={"run_id": run_id},
+        )
+    except Exception as exc:
+        print("INFRASTRUCTURE")
+        print("| Scenario | Status | Mode | Detail | Report |")
+        print("|----------|--------|------|--------|--------|")
+        print(f"| pipeline | ERROR | {'EVALUATE-ONLY' if args.evaluate_only else 'RUN'} | {str(exc).replace('|', '/')} | - |")
+        return 1
+
+    report = reports[0]
+    health_results = _evaluate_pipeline_health(
+        contract.get("pipeline_health", []),
+        state=pipeline_state,
+        elapsed_seconds=max(int((_utc_now() - started_at).total_seconds()), 0),
+    )
+    report["assertions"] = list(report.get("assertions", [])) + health_results
+    report["status"] = _classify_assertions(report["assertions"])
+    report["stages"] = pipeline_state["stages"]
+    report["handoff_reports"] = pipeline_state["handoff_reports"]
+    produced = pipeline_state["produced_artifacts"]
+    stage_total = pipeline_state["stages_with_produces"]
+    handoff_total = len(pipeline_state["handoff_reports"])
+    handoff_passes = sum(1 for item in pipeline_state["handoff_reports"] if _handoff_passed(item))
+    report["detail"] = (
+        f"Stages produced {produced}/{stage_total} artifacts; "
+        f"handoffs passed {handoff_passes}/{handoff_total}."
+    )
+    report["mode"] = "EVALUATE-ONLY" if args.evaluate_only else "RUN"
+    bucket = _result_bucket(report)
+    _print_table(bucket, [report])
+    return 1 if bucket in {"FAIL", "INFRASTRUCTURE"} else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run QA scenario contracts for skills and agents.")
+    scope = parser.add_mutually_exclusive_group(required=True)
+    scope.add_argument("--target", help="Target skill or agent name/path")
+    scope.add_argument("--all", action="store_true", help="Run all discovered scenarios")
+    parser.add_argument("--scenario", help="Run a single scenario name")
+    parser.add_argument("--tags", nargs="*", default=[], help="Filter scenarios by tags")
+    parser.add_argument("--dry-run", action="store_true", help="Check preconditions only")
+    parser.add_argument(
+        "--evaluate-only",
+        action="store_true",
+        help="Skip trigger and evaluate existing outputs only",
+    )
+    parser.add_argument("--pipeline", action="store_true", help="Run a pipeline contract")
+    parser.add_argument("--repo-root", default=str(_repo_root()), help="Override repository root")
+    parser.add_argument("--gateway-base", default=GATEWAY_BASE, help="Override gateway base URL")
+    parser.add_argument(
+        "--openclaw-profile",
+        help="Use a specific OpenClaw profile for local agent discovery and invocation",
+    )
+    parser.add_argument(
+        "--hooks-token",
+        default=_hooks_token(),
+        help="Override HOOKS_TOKEN/OPENCLAW_HOOKS_TOKEN for gateway requests",
+    )
+    args = parser.parse_args(argv)
+
+    if args.pipeline:
+        if args.all:
+            print("--pipeline requires --target")
+            return 1
+        return _run_pipeline(args)
+
+    repo_root = Path(args.repo_root).resolve()
+    discovered = discover_scenarios(
+        repo_root=repo_root,
+        target=None if args.all else args.target,
+        tags=None,
+    )
+    if not discovered:
+        print("No scenarios discovered.")
+        return 1
+
+    selected = discovered
+    if args.tags:
+        requested_tags = set(args.tags)
+        selected = [
+            item for item in selected if requested_tags.issubset(set(item.get("tags", [])))
+        ]
+    if args.scenario:
+        selected = [item for item in selected if item.get("name") == args.scenario]
+    if not selected:
+        print("No scenarios matched the requested filters.")
+        return 1
+
+    target_paths = {item["target_path"] for item in selected}
+    missing_negative = _negative_coverage_errors(discovered, target_paths=target_paths)
+    if missing_negative:
+        print("Negative coverage is missing for these targets:")
+        for target_path in missing_negative:
+            print(f"- {target_path}")
+        return 1
+
+    validation_failures: list[str] = []
+    for entry in sorted(
+        {(
+            item["target_type"],
+            item["target_path"],
+        ) for item in selected}
+    ):
+        target_type, target_path = entry
+        target_file = _resolve_target_file(repo_root, target_type=target_type, target_path=target_path)
+        try:
+            validation = validate_target(target_file)
+        except Exception as exc:
+            validation_failures.append(f"- {target_path}: {exc}")
+            continue
+        if validation["status"] == "FAIL":
+            validation_failures.append(f"- {target_path}: structural errors present")
+            for check in validation["checks"]:
+                if check["status"] == "FAIL":
+                    validation_failures.append(
+                        f"  - {check['name']}: {check.get('detail') or 'no detail'}"
+                    )
+    if validation_failures:
+        print("Structural validation failed:")
+        for line in validation_failures:
+            print(line)
+        return 1
+
+    if not args.dry_run:
+        ledger_path = repo_root / "docs" / "testing" / "coverage-ledger.yaml"
+        if ledger_path.exists():
+            import yaml as _yaml
+
+            ledger = _yaml.safe_load(ledger_path.read_text(encoding="utf-8")) or {}
+            for wave_data in (ledger.get("waves") or {}).values():
+                for item in wave_data.get("items") or []:
+                    if not isinstance(item, dict):
+                        continue
+                    item_path = item.get("id", "")
+                    if item_path not in target_paths:
+                        continue
+                    verification = item.get("verification") or {}
+                    if not verification.get("approved_smoke_scenario"):
+                        print(
+                            f"Approval gate: {item_path} has no approved_smoke_scenario "
+                            f"in the coverage ledger. Run with --dry-run or get approval first."
+                        )
+                        return 1
+
+    contract_cache: dict[str, tuple[dict[str, Any], dict[str, dict[str, Any]]]] = {}
+    reports: list[dict[str, Any]] = []
+    for entry in selected:
+        scenario_file = entry["scenario_file"]
+        contract_validation = validate_contract_file(scenario_file)
+        if not contract_validation.valid:
+            issue_lines = [f"{issue.path}: {issue.message}" for issue in contract_validation.errors]
+            reports.append(
+                _synthetic_report(
+                    entry=entry,
+                    scenario_name=entry["name"],
+                    mode="RUN",
+                    status="FAIL",
+                    detail=f"Scenario contract invalid: {'; '.join(issue_lines)}",
+                )
+            )
+            continue
+
+        cached = contract_cache.get(scenario_file)
+        if cached is None:
+            cached = _scenario_lookup(scenario_file)
+            contract_cache[scenario_file] = cached
+        _, scenarios = cached
+        scenario = scenarios.get(entry["name"])
+        if scenario is None:
+            reports.append(
+                _synthetic_report(
+                    entry=entry,
+                    scenario_name=entry["name"],
+                    mode="RUN",
+                    status="FAIL",
+                    detail=f"Scenario {entry['name']} not found in {scenario_file}",
+                )
+            )
+            continue
+
+        try:
+            report = _execute_entry(entry, scenario, repo_root=repo_root, args=args)
+        except Exception as exc:
+            report = _synthetic_report(
+                entry=entry,
+                scenario_name=entry["name"],
+                mode="EVALUATE-ONLY" if args.evaluate_only else "RUN",
+                status="ERROR",
+                detail=str(exc),
+                infrastructure_failure=True,
+            )
+        reports.append(report)
+
+    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for report in reports:
+        buckets[_result_bucket(report)].append(report)
+
+    _print_table("FAIL", buckets.get("FAIL", []))
+    _print_table("WARN", buckets.get("WARN", []))
+    _print_table("INFRASTRUCTURE", buckets.get("INFRASTRUCTURE", []))
+    _print_table("PASS", buckets.get("PASS", []))
+
+    totals = {name: len(buckets.get(name, [])) for name in ("PASS", "WARN", "FAIL", "INFRASTRUCTURE")}
+    print(
+        "Totals: "
+        f"PASS={totals['PASS']} WARN={totals['WARN']} "
+        f"FAIL={totals['FAIL']} INFRASTRUCTURE={totals['INFRASTRUCTURE']}"
+    )
+
+    return 1 if totals["FAIL"] or totals["INFRASTRUCTURE"] else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

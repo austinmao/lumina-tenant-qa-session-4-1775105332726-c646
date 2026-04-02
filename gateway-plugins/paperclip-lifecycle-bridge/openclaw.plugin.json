@@ -1,0 +1,27 @@
+{
+  "id": "paperclip-lifecycle-bridge",
+  "name": "Paperclip Lifecycle Bridge",
+  "description": "Translates Paperclip task assignments into clean specialist briefs for restricted agents.",
+  "version": "1.0.0",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "paperclipApiUrl": {
+        "type": "string",
+        "default": "http://localhost:3100"
+      },
+      "supportedSpecialists": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "defaultReviewPosture": {
+        "type": "string",
+        "default": "in_review"
+      },
+      "dedupeWindowMs": {
+        "type": "integer",
+        "default": 30000
+      }
+    }
+  }
+}

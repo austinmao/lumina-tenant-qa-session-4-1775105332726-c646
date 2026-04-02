@@ -1,0 +1,115 @@
+color_palette:
+  primary:
+    50: "#E6F0F5"
+    100: "#CCE0EB"
+    200: "#99C2D7"
+    300: "#66A3C3"
+    400: "#3385AF"
+    500: "#006799"
+    600: "#005A87"
+    700: "#004A59"
+    800: "#003947"
+    900: "#002A34"
+  secondary:
+    50: "#EAF6FE"
+    100: "#D5EDFD"
+    200: "#ABDDFC"
+    300: "#82CEFA"
+    400: "#58BEF9"
+    500: "#2EA3F2"
+    600: "#2098D1"
+    700: "#178CD0"
+    800: "#127BBF"
+    900: "#0F69A3"
+  accent:
+    purple: "#511295"
+    orange: "#F0601E"
+    bright_orange: "#FF6900"
+  neutral:
+    0: "#FFFFFF"
+    50: "#FAFAFA"
+    100: "#F7F7F7"
+    200: "#F2F2F0"
+    300: "#E1E1E1"
+    400: "#CCCCCC"
+    500: "#999999"
+    600: "#767676"
+    700: "#666666"
+    800: "#333333"
+    900: "#000000"
+  semantic:
+    success: "#00D084"
+    warning: "#FCB900"
+    error: "#F0601E"
+    info: "#0693E3"
+
+typography:
+  font_families:
+    heading: "Montserrat, Archivo, Helvetica, Arial, sans-serif"
+    body: "Lato, Open Sans, Helvetica, Arial, sans-serif"
+    accent: "Merriweather, Georgia, serif"
+  scale:
+    h1:
+      size: 4.0000rem
+      weight: 700
+      line_height: 1.2000
+    h2:
+      size: 3.1250rem
+      weight: 700
+      line_height: 1.2500
+    h3:
+      size: 2.1875rem
+      weight: 600
+      line_height: 1.3000
+    h4:
+      size: 1.8750rem
+      weight: 600
+      line_height: 1.3500
+    h5:
+      size: 1.6250rem
+      weight: 600
+      line_height: 1.4000
+    h6:
+      size: 1.3750rem
+      weight: 600
+      line_height: 1.4000
+    body:
+      size: 1.0000rem
+      weight: 400
+      line_height: 1.6000
+    caption:
+      size: 0.8125rem
+      weight: 400
+      line_height: 1.4000
+    overline:
+      size: 0.6875rem
+      weight: 600
+      line_height: 1.3000
+
+spacing:
+  base_unit: 0.2500rem
+  scale:
+    xs: 0.5000rem
+    sm: 0.7500rem
+    md: 1.0000rem
+    lg: 1.5000rem
+    xl: 2.0000rem
+    2xl: 3.0000rem
+
+border_radius:
+  none: 0.0000rem
+  sm: 0.1250rem
+  md: 0.2500rem
+  lg: 0.5000rem
+  full: 62.5000rem
+
+shadows:
+  sm: "0.0000rem 0.0625rem 0.1250rem #0000001A"
+  md: "0.0000rem 0.2500rem 0.5000rem #0000001F"
+  lg: "0.0000rem 0.7500rem 1.5000rem #00000026"
+
+breakpoints:
+  sm: 20.0000rem
+  md: 48.0000rem
+  lg: 64.0000rem
+  xl: 80.0000rem

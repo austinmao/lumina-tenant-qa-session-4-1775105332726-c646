@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/geo/geo-platform-optimization
+  trigger: /geo-platform-optimization
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: geo-platform-optimization-smoke
+  description: Platform optimizer produces per-platform readiness scores.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /geo-platform-optimization example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/geo-platform-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/geo-platform-report.md
+    sections:
+    - Google AI Overviews
+    - ChatGPT
+    - Perplexity
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: geo-platform-single
+  description: Single-platform focus produces targeted report.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /geo-platform-optimization example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/geo-platform-report.md
+    sections:
+    - Score
+  - type: no_span_errors

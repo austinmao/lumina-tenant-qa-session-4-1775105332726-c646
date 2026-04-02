@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/keyword-research
+  trigger: /keyword-research
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: keyword-research-smoke
+  description: Keyword research produces a report with search intent.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /keyword-research example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/keyword-research-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/keyword-research-report.md
+    sections:
+    - Keyword
+    - Search Intent
+    - Volume
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: keyword-research-niche
+  description: Niche queries surface long-tail opportunities.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /keyword-research example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/keyword-research-report.md
+    sections:
+    - long-tail
+  - type: no_span_errors

@@ -1,0 +1,39 @@
+version: "1.0"
+
+handoff:
+  from: agents-frontend-designer
+  to: agents-frontend-engineer
+  mechanism: sessions_spawn
+
+caller_provides:
+  required_context:
+    - name: responsive_breakpoints
+      description: "Canvas-approved layout behavior for mobile, tablet, and desktop."
+    - name: implementation_scope
+      description: "The approved landing page sections to build in code."
+  required_artifacts:
+    - path_pattern: memory/drafts/design/{{today}}-*.md
+      description: "Approved design specification."
+    - path_pattern: memory/drafts/copy/{{today}}-*.md
+      description: "Approved page copy."
+
+callee_produces:
+  required_artifacts:
+    - path_pattern: memory/frontend-state.json
+      description: "Nova updates frontend implementation tracking state for the campaign."
+  state_updates:
+    - description: "Nova implements the approved design locally and leaves deployment for a later approval gate."
+  prohibited_actions:
+    - tool: vercel.deploy
+      reason: "Nova must not deploy without Austin's explicit approval."
+
+assertions:
+  pre_delegation:
+    - type: delegation_occurred
+      from_agent: agents-frontend-designer
+      to_agent: agents-frontend-engineer
+      log_path: /tmp/openclaw/openclaw-{{today}}.log
+      run_id: "{{run_id}}"
+  post_delegation:
+    - type: state_file
+      path: memory/frontend-state.json

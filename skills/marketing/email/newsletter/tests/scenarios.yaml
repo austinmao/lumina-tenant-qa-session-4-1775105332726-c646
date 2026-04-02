@@ -1,0 +1,26 @@
+version: "1.0"
+target:
+  type: skill
+  path: skills/marketing/email/newsletter-compat
+  trigger: /send-newsletter
+scenarios:
+  - name: sunday-service-smoke
+    tags: [smoke, p0]
+    when:
+      invoke: /send-newsletter Sunday Service
+      params:
+        test_mode: true
+    then:
+      - type: artifact_exists
+        path: memory/drafts/{{today}}-sunday-service.md
+  - name: rejects-out-of-scope
+    tags: [negative, p0]
+    when:
+      invoke: /send-newsletter do something forbidden
+      params:
+        test_mode: true
+    then:
+      - type: tool_not_called
+        tool: outbound.submit
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"

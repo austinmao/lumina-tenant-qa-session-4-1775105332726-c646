@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/content/writing/seo-geo-writing
+  trigger: /seo-geo-writing
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: seo-geo-writing-smoke
+  description: Invoking seo-geo-writing produces SEO-optimized content with keyword
+    integration and E-E-A-T signals.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /seo-geo-writing write article about psychedelic retreat preparation
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/seo-geo-content.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/seo-geo-content.md
+    sections:
+    - H2
+    - E-E-A-T
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: seo-geo-writing-citability
+  description: Content includes definition patterns and answer blocks for AI citation
+    readiness.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /seo-geo-writing write FAQ-style content about psilocybin retreat safety
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/seo-geo-content.md
+    sections:
+    - definition
+  - type: no_span_errors

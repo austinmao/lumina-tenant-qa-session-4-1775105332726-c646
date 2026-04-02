@@ -1,0 +1,18 @@
+type: handoff-contract
+pipeline: campaign
+stage: copy
+from: campaign-orchestrator
+to: agents-marketing-copywriter
+binding:
+  output_schema: "structured-header"
+  required_sections: [Content Type, Persona Applied, Draft Stage, body]
+  prohibited_words: [Sacred, Miracle, Therapy, Spirit Guide, Breakthrough, Transformational]
+delegated:
+  persona_selection: true
+  word_choice: true
+  hook_selection: true
+artifact_path: "memory/campaigns/{{campaign_id}}/copy.md"
+verification:
+  - file_exists: "memory/campaigns/{{campaign_id}}/copy.md"
+  - contains: "Content Type"
+  - contains: "Draft Stage"

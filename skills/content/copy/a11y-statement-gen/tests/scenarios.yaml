@@ -1,0 +1,54 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/content/copy/a11y-statement-gen
+  trigger: /a11y-statement-gen
+defaults:
+  timeout: 60
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: smoke-basic
+  description: Smoke coverage for content/copy/a11y-statement-gen
+  tags:
+  - smoke
+  - boundary-skill
+  given:
+  - type: file_absent
+    path: memory/drafts/content-copy-a11y-statement-gen-artifact.md
+  when:
+    invoke: /a11y-statement-gen
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/content-copy-a11y-statement-gen-artifact.md
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-out-of-scope
+  description: Negative coverage for unsupported behavior
+  tags:
+  - negative
+  - boundary-skill
+  when:
+    invoke: /a11y-statement-gen do something forbidden
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: send_message
+  - &id001
+    type: no_span_errors
+- name: permission-guardrails
+  description: Permission boundaries remain intact
+  tags:
+  - permission
+  when:
+    invoke: /a11y-statement-gen
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: external_write
+  - *id001

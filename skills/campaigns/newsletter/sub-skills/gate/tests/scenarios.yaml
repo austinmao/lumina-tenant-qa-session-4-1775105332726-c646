@@ -1,0 +1,61 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/email/newsletter/sub-skills/gate
+  trigger: /newsletter-gate
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: gate-smoke
+  description: Gate passes only after the draft has a clean brand gate result.
+  tags:
+  - smoke
+  - p0
+  - permission
+  - token_budget
+  when:
+    invoke: /newsletter-gate Sunday Service approved draft
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/{{today}}-sunday-service.md
+    timeout: 120
+  - type: log_entry
+    path: memory/drafts/{{today}}-sunday-service.md
+    pattern: 'gate_status: PASSED'
+  - type: log_entry
+    path: memory/drafts/{{today}}-sunday-service.md
+    pattern: '\[FLAG:'
+    absent: true
+  - type: tool_not_permitted
+    allowed_tools:
+    - read_file
+    - write_file
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: token_budget
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+    max_total_tokens: 90000
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: gate-flags-banned-language
+  description: Gate refuses drafts that still contain flagged kill-list language.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /newsletter-gate Sunday Service draft with Sacred and Transformational
+      language still present
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

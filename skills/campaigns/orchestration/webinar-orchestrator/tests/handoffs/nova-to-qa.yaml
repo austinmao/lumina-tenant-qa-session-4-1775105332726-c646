@@ -1,0 +1,53 @@
+version: "1.0"
+
+handoff:
+  from: agents-frontend-engineer
+  to: openclaw-tdd-engineer
+  mechanism: sessions_spawn
+
+caller_provides:
+  required_context:
+    - name: test_scope
+      description: "New code artifacts produced by the webinar build that require TDD coverage."
+    - name: working_directory
+      description: "The web workspace where Vitest should run."
+    - name: promotion_gate
+      description: "Preview promotion remains blocked until the QA and TDD checkpoint is green."
+  required_artifacts:
+    - path_pattern: "{{home_dir}}/webinars/{{today}}-*.html"
+      description: "Built webinar deck ready for TDD verification."
+
+callee_produces:
+  required_artifacts:
+    - path_pattern: memory/drafts/webinars/{{today}}-*-tdd-complete.md
+      description: "TDD checkpoint file proving the test pass completed."
+      required_sections:
+        - TDD Complete
+        - Tests before
+        - Tests after
+        - Failures
+        - vitest output
+  state_updates:
+    - description: "QA/TDD run completes and records the verification summary before publish-for-review."
+  prohibited_actions:
+    - tool: vercel.deploy
+      reason: "QA verifies the build but does not publish it."
+
+assertions:
+  pre_delegation:
+    - type: delegation_occurred
+      from_agent: agents-frontend-engineer
+      to_agent: openclaw-tdd-engineer
+      log_path: /tmp/openclaw/openclaw-{{today}}.log
+      run_id: "{{run_id}}"
+  post_delegation:
+    - type: artifact_exists
+      path: memory/drafts/webinars/{{today}}-*-tdd-complete.md
+    - type: artifact_contains
+      path: memory/drafts/webinars/{{today}}-*-tdd-complete.md
+      sections:
+        - TDD Complete
+        - Tests before
+        - Tests after
+        - Failures
+        - vitest output

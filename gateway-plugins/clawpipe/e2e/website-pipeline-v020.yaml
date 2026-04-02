@@ -1,0 +1,55 @@
+pipeline:
+  name: website-build-v020-e2e
+  version: "2.0"
+  description: "E2E test pipeline exercising v0.2.0 features: reflection, DAG, quality scoring"
+defaults:
+  timeout: 30
+  max_retries: 1
+  backoff: none
+  reasoning_mode: standard
+stages:
+  - name: fetch-content
+    command: echo "fetched content successfully"
+    reasoning_mode: simple
+
+  - name: generate-copy
+    command: 'echo "quality: 0.9 completeness: 0.8 tone: 0.7"'
+    type: reflection
+    depends_on:
+      - fetch-content
+    reflection:
+      rubric_path: /Users/luminamao/Documents/Github/openclaw/rubrics/email-content.yaml
+      max_iterations: 2
+      reviewer_isolation: fresh
+
+  - name: generate-images
+    command: echo "images generated"
+    depends_on:
+      - fetch-content
+    reasoning_mode: auto
+
+  - name: assemble-html
+    command: echo "html assembled"
+    depends_on:
+      - generate-copy
+      - generate-images
+    reasoning_mode: extended
+
+  - name: deploy
+    command: echo "deployed"
+    depends_on:
+      - assemble-html
+
+quality:
+  weights:
+    confidence: 0.25
+    cost: 0.15
+    completeness: 0.25
+    feedback: 0.20
+    speed: 0.15
+  regression_threshold: 0.2
+  baseline_window: 5
+
+paths:
+  base: /tmp/clawpipe-e2e-v020/${pipeline_id}
+  artifacts: ${base}/artifacts

@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/compliance/landing-page-review
+  trigger: /landing-page-review
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: landing-page-review-smoke
+  description: Landing page review checks frontend quality and accessibility.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /landing-page-review example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/landing-page-review-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/landing-page-review-report.md
+    sections:
+    - Semantic HTML
+    - Cross-Device
+    - Accessibility
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: landing-page-inline-styles
+  description: Inline styles are flagged as violations.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /landing-page-review example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/landing-page-review-report.md
+    sections:
+    - inline
+  - type: no_span_errors

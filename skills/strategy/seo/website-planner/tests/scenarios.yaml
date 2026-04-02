@@ -1,0 +1,51 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/website-planner
+  trigger: /plan-website
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: website-planner-smoke
+  description: Website planner produces a blueprint with sitemap.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /plan-website example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: docs/website/blueprint.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: docs/website/blueprint.md
+    sections:
+    - Sitemap
+    - Page Spec
+    - Redirect
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - MEMORY.md
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: website-planner-no-site
+  description: No site context prompts for selection.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /plan-website example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: docs/website/blueprint.md
+    sections:
+    - site
+  - type: no_span_errors

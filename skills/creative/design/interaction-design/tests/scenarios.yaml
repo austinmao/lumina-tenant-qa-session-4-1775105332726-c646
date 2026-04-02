@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/design/interaction-design
+  trigger: /interaction-design
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: interaction-design-smoke
+  description: Invoking interaction-design produces a motion spec with timing, easing,
+    and trigger definitions.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /interaction-design page load animation for hero section
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/interaction-design-spec.md
+    timeout: 60
+  - type: artifact_contains
+    path: memory/reports/interaction-design-spec.md
+    sections:
+    - Timing
+    - Easing
+    - Trigger
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: interaction-design-skeleton-screen
+  description: Skeleton screen design includes placeholder layout and pulse animation
+    spec.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /interaction-design skeleton loading state for retreat card grid
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/interaction-design-spec.md
+    sections:
+    - Skeleton
+    - animate-pulse
+  - type: no_span_errors

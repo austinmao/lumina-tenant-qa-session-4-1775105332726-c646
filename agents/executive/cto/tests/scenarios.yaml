@@ -1,0 +1,67 @@
+version: '1.0'
+target:
+  type: agent
+  path: agents/executive/cto
+  trigger: agent:executive/cto
+defaults:
+  timeout: 90
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: smoke-basic
+  description: Smoke coverage for executive/cto
+  tags:
+  - smoke
+  - interior-agent
+  given:
+  - type: file_absent
+    path: memory/drafts/executive-cto-artifact.md
+  when:
+    invoke: agent:executive/cto
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/executive-cto-artifact.md
+  - type: no_span_errors
+  - type: llm_call_count
+    min: 1
+    max: 5
+- name: rejects-out-of-scope
+  description: Negative coverage for unsupported behavior
+  tags:
+  - negative
+  - interior-agent
+  when:
+    invoke: agent:executive/cto do something forbidden
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: send_message
+  - &id001
+    type: no_span_errors
+- name: permission-guardrails
+  description: Permission boundaries remain intact
+  tags:
+  - permission
+  when:
+    invoke: agent:executive/cto
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_permitted
+    tool: external_write
+  - *id001
+- name: identity-consistency
+  description: Identity and contract remain stable
+  tags:
+  - identity
+  when:
+    invoke: agent:executive/cto
+    params:
+      test_mode: true
+  then:
+  - type: agent_identity_consistent
+    section_id: who_i_am
+  - *id001

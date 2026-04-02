@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/seo-monitoring
+  trigger: /seo-monitoring
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: seo-monitoring-smoke
+  description: SEO monitoring produces a technical audit report.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /seo-monitoring example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/seo-monitoring-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/seo-monitoring-report.md
+    sections:
+    - Crawlability
+    - Schema
+    - Meta
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: seo-monitoring-no-site
+  description: No site context prompts for site selection.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /seo-monitoring example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/seo-monitoring-report.md
+    sections:
+    - site
+  - type: no_span_errors

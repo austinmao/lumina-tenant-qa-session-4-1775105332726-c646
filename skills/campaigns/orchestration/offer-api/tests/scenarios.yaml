@@ -1,0 +1,51 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/campaigns/offer-api
+  trigger: /create-offer
+defaults:
+  timeout: 120
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: offer-api-smoke
+  description: Offer API captures the core pricing fields and returns a reusable offer
+    id.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /create-offer awaken april 2026 founder offer with pricing only
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/logs/api-submits/{{today}}.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/logs/api-submits/{{today}}.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+    sections:
+    - offer_id
+    - actual_price
+    - approval_status
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-missing-actual-price
+  description: Offer API rejects incomplete offer payloads without a real price.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /create-offer awaken april 2026 founder offer with no actual price
+    params:
+      test_mode: true
+  then:
+  - type: gateway_response
+    route: /api/offers
+    method: POST
+    expected_status: 400
+  - type: no_span_errors

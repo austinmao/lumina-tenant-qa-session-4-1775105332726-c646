@@ -1,0 +1,46 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/brand/standards
+  trigger: /brand-standards
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: brand-standards-smoke
+  description: Invoking brand-standards loads voice archetypes, kill list, and brand
+    pillars for reference.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /brand-standards load the brand reference
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/brand-standards-reference.md
+    sections:
+    - Voice Archetype
+    - Brand Pillar
+    - Kill List
+    - Transcend Together
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: brand-standards-archetype-blending-violation
+  description: Blending voice archetypes within a single piece is flagged as a violation.
+  tags:
+  - negative
+  - p1
+  when:
+    invoke: /brand-standards check this copy that mixes Visionary Founder and Science
+      Translator voices
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/brand-standards-reference.md
+    sections:
+    - violation
+  - type: no_span_errors

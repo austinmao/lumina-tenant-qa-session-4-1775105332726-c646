@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/email/newsletter/sub-skills/analytics
+  trigger: /newsletter-analytics
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: analytics-smoke
+  description: Analytics reads the latest send report and updates the rolling summary
+    artifacts.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /newsletter-analytics Sunday Service follow-up
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/logs/analytics-summary.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_exists
+    path: memory/logs/analytics-flags.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: analytics-rejects-missing-send-context
+  description: Analytics cannot run before a qualifying send report exists.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /newsletter-analytics with no prior send report available
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: slack.chat.postMessage
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

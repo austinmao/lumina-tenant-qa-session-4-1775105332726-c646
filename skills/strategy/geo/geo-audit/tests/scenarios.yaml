@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/geo/geo-audit
+  trigger: /geo-audit
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: geo-audit-smoke
+  description: GEO audit produces a composite GEO Score report.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /geo-audit example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/geo-audit-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/geo-audit-report.md
+    sections:
+    - GEO Score
+    - AI Citability
+    - Action Plan
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: geo-audit-blocked-crawlers
+  description: GEO audit flags blocked AI crawlers as critical.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /geo-audit example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/geo-audit-report.md
+    sections:
+    - Critical
+  - type: no_span_errors

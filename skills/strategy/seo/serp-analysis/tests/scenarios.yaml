@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/serp-analysis
+  trigger: /serp-analysis
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: serp-analysis-smoke
+  description: SERP analysis produces snippet-optimized content.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /serp-analysis example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/serp-analysis-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/serp-analysis-report.md
+    sections:
+    - Featured Snippet
+    - People Also Ask
+    - SERP
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: serp-analysis-table
+  description: Table snippet includes proper structure.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /serp-analysis example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/serp-analysis-report.md
+    sections:
+    - table
+  - type: no_span_errors

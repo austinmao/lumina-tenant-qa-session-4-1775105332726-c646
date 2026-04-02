@@ -1,0 +1,54 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/executive/orchestration/pipeline-orchestration
+  trigger: /pipeline-orchestration
+defaults:
+  timeout: 120
+  test_mode: true
+scenarios:
+- name: pipeline-orchestration-smoke
+  description: A simple two-step pipeline executes both steps and produces a summary
+    with completed status.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: "/pipeline-orchestration pipeline: test-smoke steps:\n  - id: brief, invoke:\
+      \ /campaign-strategy \"Q2 test\", output: memory/pipelines/test-smoke/brief.md\n\
+      \  - id: copy, invoke: /copywriting --brief memory/pipelines/test-smoke/brief.md,\
+      \ depends_on: [brief], output: memory/pipelines/test-smoke/copy.md"
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/pipelines/test-smoke/summary.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/pipelines/test-smoke/summary.md
+    sections:
+    - Pipeline
+    - Steps
+    - completed
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: pipeline-orchestration-circular-dependency
+  description: A pipeline with circular dependencies is detected and refused before
+    execution.
+  tags:
+  - negative
+  - p1
+  when:
+    invoke: "/pipeline-orchestration pipeline: test-circular steps:\n  - id: a, invoke:\
+      \ /copywriting \"test\", depends_on: [b], output: memory/pipelines/test-circular/a.md\n\
+      \  - id: b, invoke: /copywriting \"test\", depends_on: [a], output: memory/pipelines/test-circular/b.md"
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/pipelines/test-circular/summary.md
+    sections:
+    - Circular dependency
+  - type: no_span_errors

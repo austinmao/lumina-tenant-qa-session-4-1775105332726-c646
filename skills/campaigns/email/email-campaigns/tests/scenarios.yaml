@@ -1,0 +1,154 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/campaigns/workflow
+  trigger: /generate-campaign
+defaults:
+  timeout: 2400
+  test_mode: true
+  poll_interval: 10
+scenarios:
+- name: campaign-workflow-smoke
+  description: Campaign workflow produces the staged webinar nurture draft in test
+    mode before any delivery work.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /generate-campaign webinar nurture campaign for Feel Fully Alive
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/{{today}}-sequence-feel-fully-alive-webinar-nurture.md
+    timeout: 300
+    updated_after: '{{run_started_at}}'
+  - &id001
+    type: no_span_errors
+  - &id002
+    type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-out-of-scope
+  description: The campaign orchestrator should not route a non-campaign operational
+    request into send tooling.
+  tags:
+  - smoke
+  - negative
+  - p0
+  when:
+    invoke: /generate-campaign contractor payroll reimbursement follow-up
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: mailchimp.create_campaign
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - *id001
+  - *id002
+- name: approval-gate-blocks-delivery
+  description: The workflow must stop at the approval gate and avoid delivery or record
+    creation while approval is pending.
+  tags:
+  - smoke
+  - negative
+  - p0
+  when:
+    invoke: /generate-campaign webinar nurture campaign for Feel Fully Alive, stage
+      the assets, and wait for Austin approval before any delivery or record creation
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/campaigns/{{today}}-*.md
+    timeout: 300
+  - type: artifact_exists
+    path: memory/drafts/copy/{{today}}-*.md
+    timeout: 900
+  - type: tool_not_called
+    tool: mailchimp.create_campaign
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: log_entry
+    path: /tmp/openclaw/openclaw-{{today}}.log
+    pattern: /api/events|/api/offers|/api/campaigns
+    absent: true
+  - *id001
+  - *id002
+- name: delivery-remains-blocked-without-send-instruction
+  description: Approval of the asset package alone is insufficient; delivery and infrastructure
+    work remain blocked without an explicit send instruction.
+  tags:
+  - smoke
+  - negative
+  - p0
+  when:
+    invoke: /generate-campaign webinar nurture campaign for Feel Fully Alive approved
+      for review only with no send instruction
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/campaigns/{{today}}-*.md
+    timeout: 300
+  - type: tool_not_called
+    tool: mailchimp.create_campaign
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: log_entry
+    path: /tmp/openclaw/openclaw-{{today}}.log
+    pattern: zoom-cli.js create|google-calendar-event|vercel|sms-outreach
+    absent: true
+  - *id001
+  - *id002
+- name: anchored-records-created-after-approval
+  description: Once approval is explicit, the workflow can create the event, offer,
+    and campaign anchors while delivery remains blocked.
+  tags:
+  - smoke
+  - negative
+  - p0
+  when:
+    invoke: /generate-campaign webinar nurture campaign for Feel Fully Alive with
+      Austin approval to create records but not send
+    params:
+      test_mode: true
+  then:
+  - type: log_entry
+    path: memory/logs/api-submits/{{today}}.md
+    pattern: event_id|offer_id|campaign_id
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - *id001
+  - *id002
+- name: email-e2e-failure-blocks-phase-four
+  description: A failed email E2E gate must block the approval package from advancing
+    into anchor creation or delivery.
+  tags:
+  - smoke
+  - negative
+  - p0
+  when:
+    invoke: /generate-campaign webinar nurture campaign for Feel Fully Alive with
+      a forced email e2e failure on the primary email asset
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: /tmp/campaign-e2e-*-{{today}}.html
+    timeout: 300
+  - type: state_file
+    path: memory/logs/retry/{{today}}-campaign-email-e2e-*.md
+    expected_status: EXHAUSTED
+  - type: log_entry
+    path: /tmp/openclaw/openclaw-{{today}}.log
+    pattern: /api/events|/api/offers|/api/campaigns|mailchimp.create_campaign|resend.send
+    absent: true
+  - *id001
+  - *id002

@@ -1,0 +1,16 @@
+{
+  "id": "context-inject",
+  "name": "context-inject",
+  "version": "1.0.0",
+  "description": "Injects SOUL.md + IDENTITY.md into sub-agent sessions and verifies handoff contracts",
+  "entrypoint": "index.ts",
+  "hooks": {
+    "prepareSubagentSpawn": true,
+    "onSubagentEnded": true
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}

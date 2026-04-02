@@ -1,0 +1,61 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/email/react-email-templates
+  trigger: /email-template
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: email-template-smoke
+  description: Generating an email template produces a React Email TSX file and render.ts
+    registration.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-a
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /email-template --name "EventReminder" --purpose transactional --sections
+      "hero,details,cta,footer"
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/email-template-eventreminder.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/email-template-eventreminder.md
+    sections:
+    - Email Template
+    - Structure
+    - Deliverability Checklist
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - React.CSSProperties
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: email-template-no-name
+  description: Invoking without a template name does not generate files.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-a
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /email-template --purpose marketing
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: fs.write
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

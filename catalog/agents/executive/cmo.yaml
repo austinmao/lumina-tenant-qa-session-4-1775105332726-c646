@@ -1,0 +1,159 @@
+kind: agent
+id: executive/cmo
+title: CMO
+description: Top-level orchestrator for Lumina OS marketing agency. Delegates cross-department
+  work, manages pipeline orchestration, and makes strategic budget/priority decisions.
+schema_version: 0.2.0
+identity:
+  display_name: CMO
+  emoji: "\U0001F3AF"
+org:
+  department: executive
+  business_function: strategic-oversight
+  domain: marketing
+  reports_to: executive/ceo
+  org_level: executive
+  manages:
+  - creative/creative-director
+  - content/copywriter
+  - engineering/frontend-engineer
+  - strategy/seo-geo-strategist
+  - campaigns/campaign-orchestrator
+  - quality/qa-engineer
+operation:
+  audience: internal
+  exposure: private
+  channels:
+  - type: slack
+    audience: operator
+    mode: both
+    approval_posture: confirm
+  triggers: []
+  side_effects:
+  - type: internal_write
+    description: Updates pipeline state and delegation records
+  approvals:
+    default: confirm
+  integrations: []
+  execution:
+    timeout_seconds: 60
+    max_retries: 1
+    idempotent: false
+  coordination:
+    pattern: orchestrator
+    can_spawn: true
+    max_spawn_depth: 2
+    produces_handoffs_for:
+    - creative/creative-director
+    - content/copywriter
+    - engineering/frontend-engineer
+    - strategy/seo-geo-strategist
+    - campaigns/campaign-orchestrator
+    - quality/qa-engineer
+  escalation:
+    chain:
+    - operator
+    timeout_seconds: 600
+    fallback_behavior: escalate
+  resilience:
+    circuit_breaker_threshold: 3
+    fallback_agent: null
+  scheduling:
+    max_concurrent: 3
+    quiet_hours: null
+    sla_response_seconds: 1800
+policy:
+  cognition:
+    complexity: high
+    cost_posture: premium
+    risk_posture: critical
+  memory:
+    retrieval_mode: enhanced_tier
+    namespaces:
+    - executive
+    - shared
+    write_permitted: true
+    fallback_behavior: file_only
+    routing_compatible: true
+  security:
+    strict: true
+    prompt_injection_guard: true
+    secret_handling: env_only
+    allowed_tools:
+    - read
+    - write
+    - exec
+    denied_tools: []
+  resource_limits:
+    max_tokens_per_session: 100000
+    max_sessions_per_day: 20
+    max_outbound_per_day: 50
+  compliance:
+    data_classification: internal
+    handles_pii: false
+    handles_phi: false
+    retention_days: 90
+  observability:
+    log_level: standard
+    cost_tracking: true
+    alert_on_failure: true
+    paperclip_sync: true
+  qa:
+    enabled: true
+    categories:
+      smoke: true
+      contract: true
+      integration: true
+      security: true
+      drift: true
+      golden: true
+    required_pass_rate: 1.0
+  documentation:
+    generate_registry_entry: true
+    generate_claude_md_section: true
+    sections: []
+  profiles:
+  - base/standard
+  - security/standard
+  - qa/standard
+  - memory/enhanced
+governance:
+  paperclip:
+    export: true
+    agent_type: orchestrator
+    include_in_org_chart: true
+    include_in_heartbeat: true
+    issue_id: null
+  visibility: internal
+  budget_tier: premium
+  risk_tier: medium
+  approval_tier: high
+  five_forces:
+    forces:
+    - cognitive_mode
+    - parallel_execution
+    justification: Orchestration mode (spawns agents, coordinates cross-department
+      work), fundamentally different cognitive mode (strategic delegation vs execution)
+provenance:
+  created_at: '2026-03-17T00:00:00Z'
+  updated_at: '2026-03-17T00:00:00Z'
+  lifecycle: managed
+  source: scaffold-adopt
+agent:
+  heartbeat:
+    enabled: true
+    cadence_minutes: 60
+    checklist:
+    - Check pending pipeline stages
+    - Review delegation status
+    - Monitor budget utilization
+  workspace_files:
+  - SOUL.md
+  - AGENTS.md
+  - MEMORY.md
+  soul_voice_section: Who I Am
+  tools_allowlist:
+  - read
+  - write
+  - exec
+  tools_denylist: []

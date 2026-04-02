@@ -1,0 +1,58 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/email/email-design-system
+  trigger: /email-design-system
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: email-design-system-smoke
+  description: Load email design tokens and validate a template against them.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /email-design-system Review the WelcomeEmail template against email design
+      tokens
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/email-design-review.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/email-design-review.md
+    sections:
+    - token
+    - template
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - RetreatGettingStarted.tsx
+    - WelcomeSequence.tsx
+    - EnrollmentOffer.tsx
+    - React.CSSProperties
+    - example.org
+    - render.ts
+    - package.json
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: email-design-system-edge-missing-tokens
+  description: Template using colors outside the design system tokens is flagged.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /email-design-system Check if template uses any colors not in the brand
+      email token palette
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/email-design-review.md
+    sections:
+    - color
+  - type: no_span_errors

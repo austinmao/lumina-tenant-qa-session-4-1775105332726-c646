@@ -1,0 +1,72 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/campaigns/api
+  trigger: /create-campaign-full
+defaults:
+  timeout: 120
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: campaign-api-smoke
+  description: Campaign API creates an anchored campaign record while preserving approval-first
+    asset state.
+  tags:
+  - smoke
+  - p0
+  - permission
+  when:
+    invoke: /create-campaign-full webinar Feel Fully Alive anchored to event evt_smoke_001
+      and offer off_smoke_001
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/logs/api-submits/{{today}}.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/logs/api-submits/{{today}}.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+    sections:
+    - campaign_id
+    - event_id
+    - offer_id
+    - approval_status
+    - send_offset
+  - type: tool_not_permitted
+    allowed_tools:
+    - bash
+    - curl
+    - jq
+    - pnpm
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-missing-anchors
+  description: Campaign API rejects unanchored campaign creation.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /create-campaign-full webinar Feel Fully Alive with no event or offer
+      anchors
+    params:
+      test_mode: true
+  then:
+  - type: gateway_response
+    route: /api/campaigns
+    method: POST
+    expected_status: 400
+  - type: tool_not_called
+    tool: resend.send
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

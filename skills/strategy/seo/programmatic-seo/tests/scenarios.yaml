@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/programmatic-seo
+  trigger: /programmatic-seo
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: programmatic-seo-smoke
+  description: Programmatic SEO produces template-driven content.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /programmatic-seo example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/programmatic-seo-output.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/programmatic-seo-output.md
+    sections:
+    - Template
+    - Data
+    - SEO
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: programmatic-seo-empty
+  description: Empty data source produces error.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /programmatic-seo example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/programmatic-seo-output.md
+    sections:
+    - error
+  - type: no_span_errors

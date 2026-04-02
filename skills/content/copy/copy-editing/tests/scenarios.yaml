@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/content/copy/copy-editing
+  trigger: /copy-editing
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: copy-editing-smoke
+  description: Invoking copy-editing runs the Eight Sweeps framework and produces
+    a revision report.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /copy-editing polish this draft retreat description
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/copy-editing-report.md
+    timeout: 60
+  - type: artifact_contains
+    path: memory/reports/copy-editing-report.md
+    sections:
+    - Clarity
+    - Voice
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: copy-editing-kill-list-sweep
+  description: Sweep 2 catches brand kill-list words and flags them for replacement.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /copy-editing "Join our sacred therapeutic journey for a miraculous healing
+      experience"
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/copy-editing-report.md
+    sections:
+    - Kill List
+  - type: no_span_errors

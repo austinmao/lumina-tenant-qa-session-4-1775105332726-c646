@@ -1,0 +1,48 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/frontend/react-state-management
+  trigger: /react-state-management
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: react-state-management-smoke
+  description: Recommend and set up a state management solution for a given app.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /react-state-management Set up state management for a dashboard with server
+      data and UI state
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/state-management-plan.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/state-management-plan.md
+    sections:
+    - state
+    - server
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: react-state-management-edge-hydration
+  description: Server-side hydration edge case is addressed in the state setup.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /react-state-management Handle SSR hydration mismatch with Zustand in
+      Next.js App Router
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/state-management-plan.md
+    sections:
+    - hydration
+  - type: no_span_errors

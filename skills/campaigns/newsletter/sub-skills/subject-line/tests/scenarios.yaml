@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/email/newsletter/sub-skills/subject-line
+  trigger: /newsletter-subject-line
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: subject-line-smoke
+  description: Subject line generation appends five variants and preview text to the
+    saved draft.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /newsletter-subject-line Sunday Service draft body ready
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/{{today}}-sunday-service.md
+    timeout: 180
+    sections:
+    - Subject Lines
+    - Preview Text
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: subject-line-rejects-clickbait
+  description: Subject line generation rejects clickbait, urgency, and false scarcity
+    language.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /newsletter-subject-line generate FREE limited time urgency subject lines
+    params:
+      test_mode: true
+  then:
+  - type: artifact_absent_words
+    path: memory/drafts/{{today}}-sunday-service.md
+    words:
+    - FREE
+    - Limited time
+    - Don't miss
+    - Act now
+  - type: no_span_errors

@@ -1,0 +1,54 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/design/design-handoff
+  trigger: /design-handoff
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: design-handoff-smoke
+  description: Generating a design handoff produces measurement specs, component docs,
+    and asset inventory.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-a
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /design-handoff --scope "homepage hero section" --framework nextjs
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/design-handoff-homepage-hero-section.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/design-handoff-homepage-hero-section.md
+    sections:
+    - measurement
+    - component
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: design-handoff-no-site
+  description: Invoking without an active site does not produce handoff documentation.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: artifact_absent
+    path: memory/site-context.yaml
+  when:
+    invoke: /design-handoff --scope "pricing page"
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: fs.write
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

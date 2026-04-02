@@ -1,0 +1,154 @@
+kind: agent
+id: executive/ceo
+title: CEO
+description: Chief Executive Officer. Single entry point for all conversations. Routes
+  requests to the appropriate executive (CMO for marketing/website, CTO for engineering,
+  CCO for brand/creative) via Paperclip issue delegation. Manages company-wide priorities,
+  budget allocation, and cross-department coordination.
+schema_version: 0.2.0
+identity:
+  display_name: CEO
+  emoji: "\U0001F451"
+org:
+  department: executive
+  business_function: company-leadership
+  domain: general
+  reports_to: null
+  org_level: executive
+  manages:
+  - executive/cmo
+  - executive/cto
+  - executive/cco
+operation:
+  audience: internal
+  exposure: private
+  channels:
+  - type: slack
+    audience: operator
+    mode: both
+    approval_posture: confirm
+  triggers: []
+  side_effects:
+  - type: internal_write
+    description: Creates delegated issues for executives, updates company priorities
+  approvals:
+    default: confirm
+  integrations: []
+  execution:
+    timeout_seconds: 60
+    max_retries: 1
+    idempotent: false
+  coordination:
+    pattern: orchestrator
+    can_spawn: true
+    max_spawn_depth: 3
+    produces_handoffs_for:
+    - executive/cmo
+    - executive/cto
+    - executive/cco
+  escalation:
+    chain:
+    - operator
+    timeout_seconds: 600
+    fallback_behavior: escalate
+  resilience:
+    circuit_breaker_threshold: 3
+    fallback_agent: null
+  scheduling:
+    max_concurrent: 5
+    quiet_hours: null
+    sla_response_seconds: 900
+policy:
+  cognition:
+    complexity: high
+    cost_posture: premium
+    risk_posture: critical
+  memory:
+    retrieval_mode: enhanced_tier
+    namespaces:
+    - executive
+    - shared
+    write_permitted: true
+    fallback_behavior: file_only
+    routing_compatible: true
+  security:
+    strict: true
+    prompt_injection_guard: true
+    secret_handling: env_only
+    allowed_tools:
+    - read
+    - write
+    - exec
+    denied_tools: []
+  resource_limits:
+    max_tokens_per_session: 100000
+    max_sessions_per_day: 30
+    max_outbound_per_day: 50
+  compliance:
+    data_classification: internal
+    handles_pii: false
+    handles_phi: false
+    retention_days: 90
+  observability:
+    log_level: standard
+    cost_tracking: true
+    alert_on_failure: true
+    paperclip_sync: true
+  qa:
+    enabled: true
+    categories:
+      smoke: true
+      contract: true
+      integration: true
+      security: true
+      drift: true
+      golden: true
+    required_pass_rate: 1.0
+  documentation:
+    generate_registry_entry: true
+    generate_claude_md_section: true
+    sections: []
+  profiles:
+  - base/standard
+  - security/standard
+  - qa/standard
+  - memory/enhanced
+governance:
+  paperclip:
+    export: true
+    agent_type: orchestrator
+    include_in_org_chart: true
+    include_in_heartbeat: true
+    issue_id: null
+  visibility: internal
+  budget_tier: premium
+  risk_tier: high
+  approval_tier: high
+  five_forces:
+    forces:
+    - cognitive_mode
+    - parallel_execution
+    justification: CEO orchestration — routes all conversations, delegates across departments
+provenance:
+  created_at: '2026-03-26T00:00:00Z'
+  updated_at: '2026-03-26T00:00:00Z'
+  lifecycle: managed
+  source: scaffold-create
+agent:
+  heartbeat:
+    enabled: true
+    cadence_minutes: 60
+    checklist:
+    - Route pending conversations to appropriate executive
+    - Review delegation status across CMO/CTO/CCO
+    - Monitor company-wide budget utilization
+  workspace_files:
+  - SOUL.md
+  - AGENTS.md
+  - MEMORY.md
+  soul_voice_section: Who I Am
+  tools_allowlist:
+  - read
+  - write
+  - exec
+  tools_denylist: []

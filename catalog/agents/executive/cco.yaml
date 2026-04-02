@@ -1,0 +1,34 @@
+kind: agent
+id: executive/cco
+title: Chief Creative Officer
+schema_version: 0.2.0
+org:
+  department: executive
+  org_level: executive
+  reports_to: executive/ceo
+  manages:
+  - creative/creative-director
+  - quality/qa-engineer
+operation:
+  approvals:
+    default: confirm
+  audience: internal
+  exposure: private
+  channels: []
+  triggers: []
+  side_effects:
+  - type: read_only
+  integrations: []
+  execution:
+    timeout_seconds: 30
+    max_retries: 0
+policy:
+  cognition:
+    complexity: high
+    cost_posture: premium
+    risk_posture: critical
+identity:
+  display_name: Cco
+provenance:
+  lifecycle: managed
+  source: scaffold-adopt

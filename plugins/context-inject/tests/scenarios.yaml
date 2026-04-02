@@ -1,0 +1,57 @@
+version: "1.0"
+target:
+  type: skill
+  path: plugins/context-inject
+  trigger: context-inject plugin
+
+defaults:
+  timeout: 180
+  test_mode: true
+  poll_interval: 5
+
+scenarios:
+  - name: identity-injection-smoke
+    description: "Spawning the copywriter via sessions_spawn injects its SOUL.md persona into the sub-agent context without the task string specifying a persona."
+    tags: [smoke, p0, identity]
+
+    when:
+      invoke: Draft a short newsletter intro about the power of intentional pause. Save to memory/drafts/{{today}}-identity-injection-test.md as Draft 1 with the required delivery header. Do not commit, send, or publish anything.
+      params:
+        test_mode: true
+        spawn_agent: agents-marketing-copywriter
+
+    then:
+      - type: artifact_exists
+        path: memory/drafts/{{today}}-identity-injection-test.md
+        timeout: 180
+        updated_after: "{{run_started_at}}"
+
+      - type: agent_identity_consistent
+        output_path: memory/drafts/{{today}}-identity-injection-test.md
+        soul_path: agents/marketing/copywriter/SOUL.md
+        rubric: "Score 1-5 for whether the output declares a persona from the copywriter's SOUL.md (e.g., Seth Godin, Wise Alchemist, or a persona-applied header) without the task string having specified one."
+        pass_threshold: 3
+
+      - type: artifact_contains
+        path: memory/drafts/{{today}}-identity-injection-test.md
+        sections: [Draft 1]
+
+  - name: identity-injection-missing-soul
+    description: "Spawning an agent whose workspace has no SOUL.md completes without error and produces output containing the original task text."
+    tags: [smoke, negative, p0, identity]
+
+    when:
+      invoke: Write a one-paragraph summary about morning routines. Save to memory/drafts/{{today}}-no-soul-test.md. Do not commit, send, or publish anything.
+      params:
+        test_mode: true
+        spawn_agent: agents-test-nosoul
+
+    then:
+      - type: artifact_exists
+        path: memory/drafts/{{today}}-no-soul-test.md
+        timeout: 120
+        updated_after: "{{run_started_at}}"
+
+      - type: log_entry
+        path: /tmp/openclaw/openclaw-{{today}}.log
+        pattern: "SOUL.md not found|no identity surface"

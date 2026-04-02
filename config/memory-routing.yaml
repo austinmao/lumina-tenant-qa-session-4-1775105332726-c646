@@ -1,0 +1,158 @@
+# Memory Routing Policy
+# Source of truth for retrieval behavior and storage routing across all OpenClaw agents.
+# Feature: 022-memory-retrieval-routing | Approved: 2026-03-11
+# Contracts: specs/022-memory-retrieval-routing/contracts/
+
+version: "1.0.0"
+
+# Universal default retrieval — applies to ALL implemented agents
+default_retrieval:
+  mode: semantic_file_search          # gateway memory.search over curated file memory
+  source_scope:
+    - MEMORY.md                       # durable tagged summary; kept compact and tagged per docs/memory-format.md
+    - memory/topics/*.md              # overflow reference material
+    - memory/YYYY-MM-DD.md           # daily logs within retention window
+  direct_file_read: reserved          # full-file loading is NOT the default; reserved for memory maintenance, audit, or explicit operator tasks
+
+# Enhanced structured-memory tier — additive layer on top of default retrieval
+# Only agents listed here use proactive Mem0 lookup in addition to the default path.
+enhanced_tier:
+  enabled: true
+  membership_mode: explicit           # membership declared here only; never inferred from SOUL.md content
+  shared_namespace: shared            # Mem0 shared namespace used by all tier members
+  agents:
+    - id: operations/coordinator
+      namespace: operations-coordinator
+    - id: sales/director
+      namespace: sales-director
+    - id: marketing/brand
+      namespace: marketing-brand
+    - id: marketing/copywriter
+      namespace: marketing-copywriter
+    - id: marketing/email
+      namespace: marketing-email
+    - id: marketing/funnel
+      namespace: marketing-funnel
+    - id: marketing/campaign-orchestrator
+      namespace: marketing-campaign-orchestrator
+    - id: corpus/transcript-curator
+      namespace: corpus-transcript-curator
+
+# Knowledge retrieval — external sources via Hyperspell
+knowledge_retrieval:
+  enabled: true
+  provider: hyperspell
+  description: "Customer knowledge base — auto-indexed from connected sources (Google Drive, Notion, Slack, Gmail) plus curated vault documents"
+  routing_rules:
+    - intent: "external knowledge, customer documents, company processes, Drive files, Notion pages"
+      provider: hyperspell
+      action: "hyperspell_search tool or auto-context injection"
+    - intent: "curated domain corpus, safety literature, medical references"
+      provider: hyperspell
+      action: "hyperspell_search with source=vault filter"
+    - intent: "cross-session agent memory, remembered facts, prior conversations"
+      provider: mem0
+      action: "memory.search via enhanced_tier"
+  fallback: "If Hyperspell is unavailable, agents proceed without external knowledge context (degraded mode)"
+
+# Non-tier agent access — on-demand read-only rules for agents outside the enhanced tier
+non_tier_access:
+  allowed_namespaces: [shared]      # Non-tier agents may only search the shared namespace on demand
+  mode: on_demand_read_only         # No proactive every-turn search; no writes; no agent-specific namespaces
+  note: >
+    Any agent may perform on-demand read-only Mem0 searches of the shared namespace
+    when the task involves cross-agent or shared-domain context. Agent-specific
+    structured namespaces remain enhanced-tier only unless a future policy explicitly
+    delegates them. No operator directive or config change is required for on-demand reads.
+
+# Storage routing — deterministic classification rules for memory candidates
+# Agents evaluate each new fact against these routes in order; first match wins.
+storage_routes:
+
+  - name: daily_log_only
+    conditions:
+      - durability: transient
+    destinations:
+      - type: daily_log
+        path_hint: "memory/YYYY-MM-DD.md"
+    notes: >
+      Session noise, short-lived state, one-off answers, temporary task context.
+      Does not survive compaction. This is the default route for anything that
+      does not pass a durability check.
+
+  - name: curated_file_memory
+    conditions:
+      - durability: durable
+      - scope: agent
+      - detail_level: summary
+    destinations:
+      - type: memory_md
+        path_hint: "agents/<domain>/<name>/MEMORY.md"
+    notes: >
+      Durable agent-specific preferences, facts, operating rules, and decisions
+      that fit within the 1,000-word MEMORY.md limit. Use tagged format per
+      docs/memory-format.md. Move to topic_file route if content is reference-heavy.
+
+  - name: topic_file
+    conditions:
+      - durability: durable
+      - detail_level: reference
+      - audience: [human, both]
+    destinations:
+      - type: topic_file
+        path_hint: "memory/topics/<topic>.md"
+    notes: >
+      Reference-heavy overflow — API notes, integration details, slow-changing
+      configuration, step-by-step procedures. Too large for MEMORY.md but must
+      remain human-readable and editable. MEMORY.md should carry a pointer to
+      the topic file rather than the full content.
+
+  - name: canonical_dual_write
+    conditions:
+      - durability: durable
+      - canonical: true
+      - scope: [domain, global]
+    destinations:
+      - type: memory_md
+        path_hint: "memory/shared/decisions.md"
+      - type: mem0
+        namespace: shared
+    notes: >
+      Canonical shared decisions that must be human-readable for audit AND
+      retrievable across agents at runtime. This route is evaluated before
+      structured_memory so canonical cross-agent facts do not collapse to
+      Mem0-only storage.
+
+  - name: structured_memory
+    conditions:
+      - durability: durable
+      - scope: [domain, global]
+      - agent_in_enhanced_tier: true
+    destinations:
+      - type: mem0
+        namespace: shared
+    notes: >
+      Shared cross-agent durable decisions and preferences that must be retrievable
+      across agent boundaries at runtime. Only enhanced-tier agents write here by
+      default; operator-directed exceptions may authorize a one-off read by any agent.
+
+# Fallback behavior — graceful degradation when a retrieval layer is unavailable
+fallback_behavior:
+  enhanced_retrieval_unavailable:
+    action: continue_with_file_memory
+    log_to: "memory/logs/mem0-writes/YYYY-MM-DD.md"
+    timeout_threshold_seconds: 5
+    note: >
+      Mem0 failure is non-blocking. If the service does not respond within 5s
+      or returns a connection error, log the failure and continue with file-memory
+      context only. Never block a response waiting for structured memory.
+
+  default_semantic_retrieval_unavailable:
+    action: explicit_compact_file_read
+    log_to: "memory/YYYY-MM-DD.md"
+    timeout_threshold_seconds: 5
+    note: >
+      If gateway semantic retrieval is unavailable, fall back to compact curated
+      MEMORY.md access only when the context is explicitly needed for the current
+      task. Log the failure to the daily log. Do not preload all memory files
+      unconditionally.

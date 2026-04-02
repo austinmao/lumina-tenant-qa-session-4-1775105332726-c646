@@ -1,0 +1,26 @@
+version: "1.0"
+target:
+  type: skill
+  path: skills/marketing/campaigns/workflow-compat
+  trigger: /generate-campaign
+scenarios:
+  - name: campaign-workflow-smoke
+    tags: [smoke, p0]
+    when:
+      invoke: /generate-campaign
+      params:
+        test_mode: true
+    then:
+      - type: artifact_exists
+        path: memory/campaigns/{{today}}-campaign.md
+  - name: rejects-out-of-scope
+    tags: [negative, p0]
+    when:
+      invoke: /generate-campaign do something forbidden
+      params:
+        test_mode: true
+    then:
+      - type: tool_not_called
+        tool: resend.send
+        log_path: /tmp/openclaw/openclaw-{{today}}.log
+        run_id: "{{run_id}}"

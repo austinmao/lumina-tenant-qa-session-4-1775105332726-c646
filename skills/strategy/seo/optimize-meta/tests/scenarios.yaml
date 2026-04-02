@@ -1,0 +1,56 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/website/optimize-meta
+  trigger: /optimize-meta
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: meta-smoke
+  description: Invoking meta optimization produces a report with optimized title and
+    description.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-b
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /optimize-meta --page /about
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/meta-optimization.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/meta-optimization.md
+    sections:
+    - Meta Optimization
+    - Title
+    - Meta Description
+    - Heading Hierarchy
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: meta-no-site
+  description: Invoking without an active site does not produce meta output.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: artifact_absent
+    path: memory/site-context.yaml
+  when:
+    invoke: /optimize-meta --page /about
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: fs.write
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

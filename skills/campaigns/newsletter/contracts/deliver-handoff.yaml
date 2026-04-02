@@ -1,0 +1,25 @@
+type: handoff-contract
+pipeline: newsletter
+stage: deliver
+from: newsletter-orchestrator
+to: newsletter-orchestrator
+
+prior_work:
+  approved_draft: "memory/drafts/{{date}}-sunday-service.md"
+
+binding:
+  render_template: "sunday-service-newsletter"
+  render_mode: "renderOnly"
+  no_mailchimp_send: true
+  from_name: "Austin Mao"
+  reply_to: "info@mail.example.org"
+  audience_list_id: "9b70ef06f1"
+
+delegated:
+  subject_line_variant: true
+
+artifact_path: "memory/logs/sends/{{date}}-sunday-service.md"
+
+verification:
+  - file_exists: "memory/logs/sends/{{date}}-sunday-service.md"
+  - contains: "delivery_channel: mailchimp"

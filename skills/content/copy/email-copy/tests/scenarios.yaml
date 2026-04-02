@@ -1,0 +1,53 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/content/copy/email-copy
+  trigger: /email-copy
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: email-copy-smoke
+  description: Invoking email-copy produces email draft with subject lines, preheader,
+    and body with a single CTA.
+  tags:
+  - smoke
+  - p0
+  given:
+  - type: invoke
+    command: /site tenant-a
+    wait_for_artifact: memory/site-context.yaml
+  when:
+    invoke: /email-copy write welcome email for new subscribers
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/email-copy-draft.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/email-copy-draft.md
+    sections:
+    - Subject
+    - Preheader
+    - CTA
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: email-copy-single-cta-rule
+  description: Email copy contains exactly one CTA, not multiple competing calls to
+    action.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /email-copy write a retreat invitation email
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/email-copy-draft.md
+    sections:
+    - CTA
+  - type: no_span_errors

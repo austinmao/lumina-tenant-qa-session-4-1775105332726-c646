@@ -1,0 +1,134 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/campaigns/webinar-orchestrator
+  trigger: /webinar-orchestrator
+defaults:
+  timeout: 3600
+  test_mode: true
+  poll_interval: 10
+scenarios:
+- name: webinar-pipeline-smoke
+  description: The webinar pipeline accepts a complete kickoff brief, saves the discovery
+    brief, saves the outline, and stops at the outline approval gate.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: '/webinar-orchestrator Webinar topic: Have a Good Trip. Target audience:
+      founders who feel successful on paper but disconnected in their nervous system.
+      One Big Domino: when a nervous system finally feels safe, transformation becomes
+      possible without force. Primary offer and price point: Awaken Together retreat,
+      $5,995 psilocybin / $6,995 ayahuasca. Webinar date, time, and duration: 2026-03-26,
+      6:00 PM MT, 90 minutes. Learning outcomes: understand why safety changes trip
+      outcomes, identify the four container vetting questions, explain the three-ceremony
+      arc, recognize why integration matters, describe the link between safety and
+      joy, know what a Connection Call is for. Credibility anchors: 650+ people facilitated,
+      400+ alumni, 60+ retreats, 300+ five-star reviews. Co-host or partner org: none.
+      Save the discovery brief and stop at the outline approval gate.'
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/webinars/{{today}}-have-a-good-trip-brief.md
+    timeout: 600
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/webinars/{{today}}-have-a-good-trip-brief.md
+    sections:
+    - 1) Webinar topic / working title
+    - 2) Target audience
+    - 3) One Big Domino
+    - 6) Learning outcomes
+  - type: artifact_exists
+    path: memory/drafts/webinars/{{today}}-have-a-good-trip-outline.md
+    timeout: 600
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/webinars/{{today}}-have-a-good-trip-outline.md
+    sections:
+    - Big Domino (ONE belief)
+    - Section-by-section slide breakdown
+    - Secrets
+    - Stack slide sequence (value items)
+  - &id001
+    type: no_span_errors
+  - &id002
+    type: tool_not_invoked
+    tool: shell.execute
+- name: approval-gate-stops-copy-and-design-before-approval
+  description: The pipeline should pause at the explicit outline approval gate and
+    avoid downstream delegation.
+  tags:
+  - smoke
+  - negative
+  - p0
+  when:
+    invoke: /webinar-orchestrator Build the webinar outline only and wait for Austin
+      approval before any copy or design work.
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/webinars/{{today}}-*-outline.md
+    timeout: 900
+  - type: log_entry
+    path: /tmp/openclaw/openclaw-{{today}}.log
+    pattern: agents-marketing-copywriter|agents-frontend-designer|agents-frontend-engineer|openclaw-tdd-engineer
+    absent: true
+  - *id001
+  - *id002
+- name: discovery-produces-brief
+  description: Discovery can produce the initial webinar brief before outline approval
+    or downstream build work.
+  tags:
+  - smoke
+  - negative
+  - p0
+  when:
+    invoke: /webinar-orchestrator collect the webinar discovery brief only for Have
+      a Good Trip and wait before outlining
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/webinars/{{today}}-have-a-good-trip-brief.md
+    timeout: 600
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/webinars/{{today}}-have-a-good-trip-brief.md
+    sections:
+    - 1) Webinar topic / working title
+    - 3) One Big Domino
+    - 7) Credibility anchors / social proof
+  - type: log_entry
+    path: /tmp/openclaw/openclaw-{{today}}.log
+    pattern: agents-marketing-copywriter|agents-frontend-designer|agents-frontend-engineer|openclaw-tdd-engineer
+    absent: true
+  - *id001
+  - *id002
+- name: qa-failure-blocks-preview-promotion
+  description: A failing QA or TDD pass blocks preview promotion and campaign registration.
+  tags:
+  - smoke
+  - negative
+  - p0
+  when:
+    invoke: /webinar-orchestrator Have a Good Trip with an intentional QA failure
+      before preview promotion
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: /Users/operator/webinars/{{today}}-*.html
+    timeout: 2700
+  - type: tool_not_called
+    tool: vercel.deploy
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: log_entry
+    path: memory/logs/api-submits/{{today}}.md
+    pattern: registered
+    absent: true
+  - *id001
+  - *id002

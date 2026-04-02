@@ -1,0 +1,46 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/frontend/blog-migration
+  trigger: /migrate-blog
+defaults:
+  timeout: 120
+  test_mode: true
+scenarios:
+- name: blog-migration-smoke
+  description: Migrate blog posts from an export file to MDX format.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /migrate-blog Migrate blog posts from web/src/data/sample-export.xml
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/blog-migration-report.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/blog-migration-report.md
+    sections:
+    - MDX
+    - migrated
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: blog-migration-edge-redirect-map
+  description: Migration generates redirect entries for old URLs.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /migrate-blog Generate redirect map for migrated Squarespace posts
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/blog-migration-report.md
+    sections:
+    - redirect
+  - type: no_span_errors

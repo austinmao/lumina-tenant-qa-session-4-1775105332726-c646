@@ -1,0 +1,95 @@
+business_model:
+  model_type: "Personal brand authority funnel feeding program and speaking revenue"
+  primary_revenue_drivers:
+    - "Behavior-change programs (explicitly WILDFIT; implied Stop It Summit monetization downstream)"
+    - "Paid transformation experiences tied to Behavior Change Dynamics™ and Stop Style™ frameworks"
+    - "Corporate/keynote speaking and advisory work for Fortune 500 and institutional audiences"
+  monetization_logic:
+    top_of_funnel: "Website narrative + credibility stack + summit invitation"
+    mid_funnel: "Summit participation captures high-intent leads interested in behavior cessation"
+    bottom_funnel: "Program enrollment, coaching/experiences, enterprise engagements"
+  trust_assets:
+    - "20+ years in behavior change"
+    - "500,000+ to 1,000,000+ people helped via WILDFIT claims across pages"
+    - "Canadian Senate medal and high-status speaking venues"
+  operational_notes:
+    - "Home page includes a prominent 'JOIN THE STOP IT SUMMIT' button with UTM parameters, signaling campaign tracking and acquisition focus"
+
+target_audience:
+  core_segments:
+    - name: "Self-improvement seekers with stuck habits"
+      jobs_to_be_done:
+        - "Stop compulsive behaviors without relying on brute-force willpower"
+        - "Build consistency and self-trust"
+    - name: "Health transformation audience"
+      jobs_to_be_done:
+        - "Repair relationship with food and health behaviors"
+        - "Sustain change long-term rather than yo-yo outcomes"
+    - name: "High performers, leaders, and organizations"
+      jobs_to_be_done:
+        - "Improve decision quality, resilience, and team behavior"
+        - "Access practical behavior-science frameworks for performance"
+  psychographics:
+    motivations: ["Freedom", "Control", "Identity-level change", "Durable results"]
+    pain_points: ["Repeated relapse", "Shame from broken promises", "Information overload without transformation"]
+
+value_proposition:
+  core_promise: "Teach people how to interrupt and permanently change unwanted behaviors by training the stopping process itself."
+  differentiators:
+    - "Positions behavior cessation as a trainable skill, not a motivation problem"
+    - "Uses proprietary frameworks (Behavior Change Dynamics™, Stop Style™)"
+    - "Combines personal-origin story with large-scale outcomes and institutional credibility"
+  evidence_language_on_site:
+    - "Long track record and global speaking footprint"
+    - "Large participant volume via WILDFIT"
+  outcome_framing:
+    functional: "Replace unwanted default patterns with conscious choice"
+    emotional: "Freedom from compulsions and inherited patterns"
+    identity: "From someone who 'tries' to someone who can reliably stop"
+
+competitive_landscape:
+  likely_competitor_sets:
+    direct:
+      - "Habit change and coaching programs (e.g., behavior/habit masterminds)"
+      - "Wellness/nutrition transformation programs"
+    indirect:
+      - "Therapy/self-help content ecosystems"
+      - "Productivity and discipline influencers"
+  positioning_angle:
+    - "Bridges wellness + psychology + performance rather than occupying only one category"
+    - "Competes on transformation methodology depth and founder authority"
+  strategic_risks:
+    - "Brand appears strongly founder-centric; scalability depends on translating persona trust into system trust"
+    - "Some pages are not consistently crawlable in automated retrieval, which may affect discoverability and auditing"
+
+conversion_goals:
+  primary_goal: "Drive qualified sign-ups to The Stop It Summit"
+  observable_ctas:
+    - text: "JOIN THE STOP IT SUMMIT"
+      location: "Homepage header CTA"
+      destination: "/the-stop-it-summit/ with UTM tracking"
+  funnel_hypothesis:
+    stage_1_awareness: "Authority-led homepage messaging introduces Eric as Architect of Transformation"
+    stage_2_interest: "Summit promise and behavior-change narrative increase curiosity"
+    stage_3_action: "Click-through to summit page (likely registration/intake flow)"
+    stage_4_monetization: "Post-summit conversion into programs, coaching, or enterprise offerings"
+  optimization_opportunities:
+    - "Clarify summit value stack (what attendees get, timeline, outcomes) above the fold"
+    - "Add segment-specific CTA variants (individual vs corporate)"
+    - "Strengthen proof near CTA with concise case outcomes"
+
+tone_direction:
+  brand_voice_attributes:
+    - "Authoritative but motivational"
+    - "Transformational and freedom-oriented"
+    - "Direct, conviction-led, and principle-driven"
+  messaging_patterns:
+    - "Narrative arc from personal cessation milestones to teachable methodology"
+    - "Uses contrast language (force/willpower vs engineered change)"
+    - "Repetition of 'stop' framing to anchor mental model"
+  emotional_palette:
+    primary: ["Empowerment", "Relief", "Agency"]
+    secondary: ["Aspirational confidence", "Credibility"]
+  recommended_direction:
+    - "Keep high-conviction authority tone while increasing tactical clarity on next steps"
+    - "Balance visionary language with concrete 'how it works' proof blocks to improve conversion confidence"

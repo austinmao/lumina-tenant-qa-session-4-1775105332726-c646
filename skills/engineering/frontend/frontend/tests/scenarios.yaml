@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/engineering/frontend/frontend
+  trigger: /frontend
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: frontend-smoke
+  description: Frontend build produces page components per brand specs.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /frontend example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/frontend-build-spec.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/frontend-build-spec.md
+    sections:
+    - Component
+    - Brand
+    - Layout
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: frontend-no-brand-read
+  description: Build without reading brand guide is flagged.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /frontend example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/frontend-build-spec.md
+    sections:
+    - brand-guide
+  - type: no_span_errors

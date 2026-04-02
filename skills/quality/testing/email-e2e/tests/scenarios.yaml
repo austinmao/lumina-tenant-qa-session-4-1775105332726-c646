@@ -1,0 +1,51 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/testing/email-e2e
+  trigger: /email-e2e
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: email-e2e-smoke
+  description: Email E2E sends test and verifies delivery assertions.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /email-e2e example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/logs/qa/email-e2e-result.yaml
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/logs/qa/email-e2e-result.yaml
+    sections:
+    - delivery
+    - subject
+    - links
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - run_e2e.py
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: email-e2e-missing-key
+  description: Missing AGENTMAIL_API_KEY blocks execution.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /email-e2e example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/logs/qa/email-e2e-result.yaml
+    sections:
+    - AGENTMAIL_API_KEY
+  - type: no_span_errors

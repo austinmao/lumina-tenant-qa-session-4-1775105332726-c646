@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/testing/ralph
+  trigger: /ralph
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: ralph-smoke
+  description: Ralph QA loop detects artifacts and evaluates them.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /ralph example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/logs/qa/ralph/ralph-result.yaml
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/logs/qa/ralph/ralph-result.yaml
+    sections:
+    - evaluate
+    - artifact
+    - verdict
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: ralph-no-artifacts
+  description: No new artifacts produces clean pass.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /ralph example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/logs/qa/ralph/ralph-result.yaml
+    sections:
+    - pass
+  - type: no_span_errors

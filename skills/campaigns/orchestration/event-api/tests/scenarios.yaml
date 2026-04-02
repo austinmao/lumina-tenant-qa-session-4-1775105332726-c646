@@ -1,0 +1,53 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/campaigns/event-api
+  trigger: /create-event
+defaults:
+  timeout: 120
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: event-api-smoke
+  description: Event API captures the required event payload and records the anchored
+    event id.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /create-event awaken-april-2026 retreat record with start time and host
+      details in test mode
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/logs/api-submits/{{today}}.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/logs/api-submits/{{today}}.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+    sections:
+    - event_id
+    - slug
+    - start_at
+    - approval_status
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: rejects-missing-start-at-or-slug
+  description: Event API rejects incomplete event requests.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /create-event with missing slug and start time
+    params:
+      test_mode: true
+  then:
+  - type: gateway_response
+    route: /api/events
+    method: POST
+    expected_status: 400
+  - type: no_span_errors

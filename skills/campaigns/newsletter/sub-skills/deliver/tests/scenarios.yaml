@@ -1,0 +1,74 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/marketing/email/newsletter/sub-skills/deliver
+  trigger: /newsletter-deliver
+defaults:
+  timeout: 300
+  test_mode: true
+  poll_interval: 5
+scenarios:
+- name: deliver-smoke
+  description: Deliver writes a staged send report only after gate and approval prerequisites
+    are satisfied.
+  tags:
+  - smoke
+  - p0
+  - permission
+  - token_budget
+  when:
+    invoke: /newsletter-deliver Sunday Service with approval confirmed and gate_status
+      passed
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/logs/test-runs/{{today}}-*sunday-service*.md
+    timeout: 180
+    updated_after: '{{run_started_at}}'
+  - type: tool_called
+    tool: outbound.submit
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+    args:
+      channel: mailchimp
+      context_key: newsletter
+  - type: artifact_contains
+    path: memory/logs/test-runs/{{today}}-*sunday-service*.md
+    timeout: 180
+    updated_after: '{{run_started_at}}'
+    sections:
+    - delivery_mode
+    - delivery_channel
+    - total_recipients
+    - mailchimp_campaign_id
+    - failures
+  - type: tool_not_permitted
+    allowed_tools:
+    - curl
+    - jq
+    - node
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: token_budget
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+    max_total_tokens: 120000
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: deliver-forbids-send-without-approval
+  description: Deliver refuses to send when the approval gate is still pending.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /newsletter-deliver Sunday Service with no Austin approval in session
+    params:
+      test_mode: true
+  then:
+  - type: tool_not_called
+    tool: outbound.submit
+    log_path: /tmp/openclaw/openclaw-{{today}}.log
+    run_id: '{{run_id}}'
+  - type: no_span_errors

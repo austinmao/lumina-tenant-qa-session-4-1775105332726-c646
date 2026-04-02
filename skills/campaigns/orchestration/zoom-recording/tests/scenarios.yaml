@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/orchestration/zoom-recording
+  trigger: /zoom-recording
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: zoom-recording-smoke
+  description: Fetch a Zoom recording and prepare it for the replay page.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /zoom-recording Fetch recording for the Have a Good Trip webinar
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/zoom-recording-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/zoom-recording-report.md
+    sections:
+    - recording
+    - URL
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: zoom-recording-edge-missing-creds
+  description: Missing Zoom credentials are detected before attempting API calls.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /zoom-recording Fetch latest recording
+    params:
+      test_mode: true
+      mock_missing_env: ZOOM_ACCOUNT_ID
+  then:
+  - type: artifact_contains
+    path: memory/reports/zoom-recording-report.md
+    sections:
+    - ZOOM_ACCOUNT_ID
+  - type: no_span_errors

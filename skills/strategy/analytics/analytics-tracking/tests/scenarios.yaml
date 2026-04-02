@@ -1,0 +1,56 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/analytics/analytics-tracking
+  trigger: /analytics-tracking
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: analytics-tracking-smoke
+  description: Analytics tracking produces event taxonomy.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /analytics-tracking example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/analytics-tracking-plan.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/analytics-tracking-plan.md
+    sections:
+    - Event
+    - GA4
+    - UTM
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - document.referrer
+    - perplexity.ai
+    - chatgpt.com
+    - google.com
+    - bing.com
+    - claude.ai
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: analytics-no-question
+  description: Events without decision question flagged.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /analytics-tracking example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/analytics-tracking-plan.md
+    sections:
+    - question
+  - type: no_span_errors

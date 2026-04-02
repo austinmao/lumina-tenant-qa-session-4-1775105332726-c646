@@ -1,0 +1,77 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/analytics/gtm-implementation
+  trigger: /gtm-implementation
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: gtm-produces-implementation-spec
+  description: Invoking /gtm-implementation produces a tag/trigger/variable spec.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /gtm-implementation
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: trigger
+  - type: response_contains
+    content: tag
+  - type: response_contains
+    content: variable
+  - &id001
+    type: no_span_errors
+  - &id002
+    type: tool_not_invoked
+    tool: shell.execute
+- name: gtm-requires-container-id
+  description: Fails gracefully when GTM_CONTAINER_ID is not set.
+  tags:
+  - negative
+  - p0
+  given:
+  - type: env_unset
+    var: GTM_CONTAINER_ID
+  when:
+    invoke: /gtm-implementation
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: container
+  - type: no_span_errors
+- name: gtm-includes-consent-mode
+  description: Implementation spec includes consent mode configuration.
+  tags:
+  - smoke
+  - p1
+  when:
+    invoke: Set up GTM tags for form submission and page view events
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: consent
+  - *id001
+  - *id002
+- name: gtm-data-layer-schema
+  description: Output includes data layer push examples with parameter types.
+  tags:
+  - smoke
+  - p1
+  when:
+    invoke: Create GTM implementation for webinar registration and quiz completion
+      events
+    params:
+      test_mode: true
+  then:
+  - type: response_contains
+    content: dataLayer
+  - type: response_contains
+    content: event
+  - *id001
+  - *id002

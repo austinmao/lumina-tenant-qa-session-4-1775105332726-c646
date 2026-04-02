@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/technical-seo
+  trigger: /technical-seo
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: technical-seo-smoke
+  description: Technical SEO audit produces crawlability report.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /technical-seo example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/technical-seo-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/technical-seo-report.md
+    sections:
+    - Crawlability
+    - Indexation
+    - Page Speed
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: technical-seo-js
+  description: JS-dependent content flagged as risk.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /technical-seo example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/technical-seo-report.md
+    sections:
+    - JavaScript
+  - type: no_span_errors

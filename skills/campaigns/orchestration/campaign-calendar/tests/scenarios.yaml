@@ -1,0 +1,51 @@
+meta:
+  skill: campaign-calendar
+  path: skills/campaigns/orchestration/campaign-calendar
+  trigger: /campaign-calendar
+  version: "1.0.0"
+  description: Validates campaign calendar conflict detection
+
+scenarios:
+- name: calendar-no-conflicts
+  description: Single pipeline with no overlapping sends produces clean calendar
+  steps:
+    - type: invoke
+      invoke: /campaign-calendar Check calendar for pipeline with one send per day
+  assertions:
+    - type: output_contains
+      value: "verdict: pass"
+    - type: output_not_contains
+      value: "severity: error"
+
+- name: calendar-same-day-conflict
+  description: Two pipelines scheduling sends to same audience on same date reports error
+  steps:
+    - type: invoke
+      invoke: /campaign-calendar Check calendar with two same-day sends to full-list
+  assertions:
+    - type: output_contains
+      value: "severity: error"
+    - type: output_contains
+      value: "same-audience-same-day"
+
+- name: calendar-within-3h-event
+  description: Broadcast scheduled 2 hours before event_date reports error
+  steps:
+    - type: invoke
+      invoke: /campaign-calendar Check calendar with send 2h before event
+  assertions:
+    - type: output_contains
+      value: "severity: error"
+    - type: output_contains
+      value: "within-3h-of-event"
+
+- name: calendar-registrant-overlap-warning
+  description: General broadcast and registrant broadcast on same day reports warning
+  steps:
+    - type: invoke
+      invoke: /campaign-calendar Check calendar with marketing + registrant overlap
+  assertions:
+    - type: output_contains
+      value: "severity: warning"
+    - type: output_contains
+      value: "marketing-registrant-overlap"

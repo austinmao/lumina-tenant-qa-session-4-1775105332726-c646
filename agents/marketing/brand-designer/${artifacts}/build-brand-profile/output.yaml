@@ -1,0 +1,137 @@
+brand_voice:
+  tone:
+    - energetic
+    - motivational
+    - expert-led
+    - trustworthy
+    - semi-formal
+  personality_traits:
+    - transformational
+    - credible
+    - action-oriented
+    - human and relatable
+    - globally minded
+  writing_style:
+    - Lead with a clear promise, then support with credentials or proof.
+    - Use concise, high-clarity sentences with confident direction.
+    - Balance inspiration with practical next steps.
+    - Favor active voice and outcome-focused phrasing.
+    - Weave social proof naturally without sounding boastful.
+  vocabulary_preferences:
+    preferred:
+      - transformation
+      - behavior change
+      - mastery
+      - high-performance
+      - practical tools
+      - evidence-based
+      - global impact
+      - proven framework
+      - register now
+      - learn more
+    avoid:
+      - vague hype language
+      - slang-heavy phrasing
+      - overly academic jargon
+      - fear-based manipulation
+      - hard-sell urgency clichés
+
+visual_identity:
+  primary_colors:
+    - name: Deep Ocean Blue
+      hex: "#006799"
+      usage: Primary brand anchors, headings, key UI elements
+    - name: Midnight Navy
+      hex: "#004A59"
+      usage: Dark backgrounds, emphasis blocks, premium contrast
+    - name: Pure White
+      hex: "#FFFFFF"
+      usage: Core canvas and negative space
+  secondary_colors:
+    - name: Electric Sky Blue
+      hex: "#2EA3F2"
+      usage: Links, secondary actions, interactive states
+    - name: Action Blue
+      hex: "#2098D1"
+      usage: Hover states and supportive accents
+    - name: Warm Orange
+      hex: "#F0601E"
+      usage: CTA accents and urgency moments
+    - name: Signature Purple
+      hex: "#511295"
+      usage: Premium accent, highlights, select badges
+    - name: Neutral Gray 700
+      hex: "#666666"
+      usage: Body text and UI support copy
+  typography_hierarchy:
+    h1:
+      family: "Montserrat, Archivo, Helvetica, Arial, sans-serif"
+      size: "4rem"
+      weight: 700
+      line_height: 1.2
+      usage: Hero headlines and campaign lead statements
+    h2:
+      family: "Montserrat, Archivo, Helvetica, Arial, sans-serif"
+      size: "3.125rem"
+      weight: 700
+      line_height: 1.25
+      usage: Section-level value propositions
+    h3:
+      family: "Montserrat, Archivo, Helvetica, Arial, sans-serif"
+      size: "2.1875rem"
+      weight: 600
+      line_height: 1.3
+      usage: Subsection framing and content pivots
+    body:
+      family: "Lato, Open Sans, Helvetica, Arial, sans-serif"
+      size: "1rem"
+      weight: 400
+      line_height: 1.6
+      usage: Core paragraphs, explanations, and long-form content
+    accent:
+      family: "Merriweather, Georgia, serif"
+      usage: Pull quotes, testimonials, and editorial emphasis
+  imagery_direction:
+    - Prioritize founder-led portraiture with confident, approachable expression.
+    - Use real event, coaching, and transformation-context photography over generic stock scenes.
+    - Keep compositions clean with generous white/neutral space.
+    - Emphasize human progress, momentum, and lived outcomes.
+    - Use iconography minimally and only to clarify, not decorate.
+
+guidelines_do:
+  - Do pair motivational claims with concrete trust signals (ratings, testimonials, credentials).
+  - Do maintain high contrast using blue/white foundations for readability and authority.
+  - Do keep CTA language direct and action-led (for example: Register Now, Learn More).
+  - Do structure copy in a clear progression: problem -> framework -> proof -> action.
+  - Do use consistent typographic hierarchy to preserve premium editorial rhythm.
+  - Do foreground measurable impact and transformation outcomes where credible.
+
+guidelines_dont:
+  - Don’t use neon or off-brand palettes that dilute the blue-led identity.
+  - Don’t write in a casual, meme-like, or sarcastic tone.
+  - Don’t overload pages with decorative icons, gradients, or visual clutter.
+  - Don’t make unsupported superlative claims without evidence or context.
+  - Don’t bury CTAs in dense paragraphs or ambiguous wording.
+  - Don’t mix too many font styles in a single section.
+
+application_rules:
+  hero:
+    - Use an H1 in primary heading font with decisive, transformational language.
+    - Anchor the hero in Deep Ocean Blue and White with one strong supporting accent.
+    - Include immediate credibility (credential, reach metric, or social proof snippet).
+    - Present one primary CTA and one secondary CTA max.
+  body:
+    - Use body typography for clarity with 1.6 line height and strong scanability.
+    - Alternate short insight blocks, proof points, and testimonial moments.
+    - Maintain neutral backgrounds and use secondary blue for links/interactions.
+    - Keep benefit statements specific, practical, and outcome-focused.
+  CTA:
+    - Use Warm Orange or Electric Sky Blue buttons on high-contrast surfaces.
+    - Keep CTA copy short, directive, and benefit-linked.
+    - Reinforce confidence with nearby trust microcopy (e.g., attendee ratings, proven method).
+    - Avoid multiple competing primary actions in one viewport.
+  footer:
+    - Use neutral or dark-blue base with clear contrast for legibility.
+    - Include concise brand promise, essential navigation, and legal/contact items.
+    - Keep tone supportive and professional, not sales-heavy.
+    - Optionally repeat a low-friction secondary CTA (Learn More) with restrained styling.

@@ -1,0 +1,204 @@
+# ClawSpec test scenarios for relay-router skill
+# Run: python3 -m clawspec run skills/operations/routing/relay-router/tests/scenarios.yaml
+
+name: relay-router
+version: "1.0.0"
+skill_path: skills/operations/routing/relay-router/SKILL.md
+
+scenarios:
+  # --- Routing Decision Tests ---
+
+  - id: route-active-contact
+    name: "Active relay contact is forwarded to tenant"
+    description: "When an inbound message arrives from a phone number mapped to an active tenant, the message is forwarded via HTTP POST to the tenant's relay endpoint"
+    given:
+      - hub_relay_routing entry exists for +15551234567 with relay_status=active and relay_endpoint=https://tenant.example.com/lumina-relay/inbound
+    when:
+      - inbound message arrives from +15551234567 on whatsapp channel
+    then:
+      - HTTP POST sent to https://tenant.example.com/lumina-relay/inbound
+      - POST body contains sender_phone, message, channel_origin, message_id, timestamp
+      - Authorization header contains Bearer token matching tenant's inbound secret
+      - hub_relay_messages record created with message_id, tenant_id, sender_phone, channel_origin
+      - log event relay.routed emitted
+    assertions:
+      - type: http_call_made
+        url_pattern: "*/lumina-relay/inbound"
+        method: POST
+      - type: log_contains
+        pattern: "relay.routed"
+
+  - id: route-dormant-contact
+    name: "Dormant relay contact gets redirect message"
+    description: "When an inbound message arrives from a phone number mapped to a dormant tenant, the hub replies with the redirect_hint"
+    given:
+      - hub_relay_routing entry exists for +15559999999 with relay_status=dormant and redirect_hint="Message me at +15558888888 on WhatsApp"
+    when:
+      - inbound message arrives from +15559999999 on imessage channel
+    then:
+      - no HTTP POST sent to any tenant endpoint
+      - reply sent on imessage channel containing "Message me at +15558888888 on WhatsApp"
+      - log event relay.dormant emitted
+    assertions:
+      - type: reply_contains
+        text: "Message me at"
+      - type: log_contains
+        pattern: "relay.dormant"
+
+  - id: route-unknown-contact
+    name: "Unknown phone number passes through to hub agents"
+    description: "When an inbound message arrives from an unrecognized phone number, routing returns pass and hub agents process normally"
+    given:
+      - no hub_relay_routing entry exists for +15550000000
+    when:
+      - inbound message arrives from +15550000000 on telegram channel
+    then:
+      - routing returns pass
+      - no HTTP POST sent to any tenant endpoint
+      - no redirect reply sent
+      - hub agents process the message normally
+      - log event relay.passthrough emitted (debug level)
+    assertions:
+      - type: routing_result
+        value: "pass"
+      - type: log_contains
+        pattern: "relay.passthrough"
+
+  - id: route-disabled-contact
+    name: "Disabled relay contact passes through to hub agents"
+    description: "When a phone number exists in routing table but is disabled, it passes through like an unknown contact"
+    given:
+      - hub_relay_routing entry exists for +15557777777 with relay_status=disabled
+    when:
+      - inbound message arrives from +15557777777
+    then:
+      - routing returns pass
+      - hub agents process normally
+    assertions:
+      - type: routing_result
+        value: "pass"
+
+  # --- Callback Validation Tests ---
+
+  - id: callback-valid
+    name: "Valid callback delivers reply through originating channel"
+    description: "When tenant sends a valid callback with matching tenant_id, message_id, and recipient_phone, the reply is delivered through the original channel"
+    given:
+      - hub_relay_messages record exists for msg_abc123 with tenant_id=acme-corp, sender_phone=+15551234567, channel_origin=whatsapp
+    when:
+      - POST /lumina-relay/outbound with tenant_id=acme-corp, message_id=msg_abc123, recipient_phone=+15551234567, reply="Hello!"
+      - Authorization: Bearer {tenant-a outbound secret}
+    then:
+      - reply "Hello!" delivered via whatsapp to +15551234567
+      - callback_count incremented on hub_relay_messages record
+      - log event relay.callback_received emitted
+      - HTTP 200 returned with status=delivered
+    assertions:
+      - type: http_status
+        value: 200
+      - type: channel_send
+        channel: whatsapp
+        recipient: "+15551234567"
+
+  - id: callback-wrong-tenant
+    name: "Callback from wrong tenant is rejected"
+    description: "When a tenant sends a callback claiming to be a different tenant, it is rejected with 403"
+    given:
+      - hub_relay_messages record exists for msg_abc123 with tenant_id=acme-corp
+    when:
+      - POST /lumina-relay/outbound with tenant_id=katerina, message_id=msg_abc123
+      - Authorization: Bearer {katerina outbound secret}
+    then:
+      - HTTP 403 returned
+      - no message delivered
+    assertions:
+      - type: http_status
+        value: 403
+
+  - id: callback-wrong-phone
+    name: "Callback with mismatched phone is rejected"
+    description: "When a tenant sends a callback with a recipient_phone that doesn't match the original sender, it is rejected"
+    given:
+      - hub_relay_messages record exists for msg_abc123 with sender_phone=+15551234567
+    when:
+      - POST /lumina-relay/outbound with message_id=msg_abc123, recipient_phone=+15559999999
+    then:
+      - HTTP 403 returned
+      - no message delivered to +15559999999
+    assertions:
+      - type: http_status
+        value: 403
+
+  - id: callback-expired-message
+    name: "Callback for expired message is rejected"
+    description: "When a tenant sends a callback for a message_id that has been cleaned up (TTL expired), it is rejected"
+    given:
+      - no hub_relay_messages record exists for msg_expired
+    when:
+      - POST /lumina-relay/outbound with message_id=msg_expired
+    then:
+      - HTTP 404 returned
+    assertions:
+      - type: http_status
+        value: 404
+
+  - id: callback-invalid-token
+    name: "Callback with invalid token is rejected"
+    when:
+      - POST /lumina-relay/outbound with Authorization: Bearer invalid-token
+    then:
+      - HTTP 401 returned
+    assertions:
+      - type: http_status
+        value: 401
+
+  # --- Error Handling Tests ---
+
+  - id: tenant-unreachable
+    name: "Tenant endpoint unreachable — user gets error message"
+    given:
+      - hub_relay_routing entry exists for +15551234567 with relay_status=active and relay_endpoint=https://dead.example.com/lumina-relay/inbound
+    when:
+      - inbound message arrives from +15551234567
+      - HTTP POST to tenant endpoint times out
+    then:
+      - reply sent to sender: "I'm having trouble reaching your assistant"
+      - log event relay.error emitted
+    assertions:
+      - type: reply_contains
+        text: "trouble reaching"
+      - type: log_contains
+        pattern: "relay.error"
+
+  # --- Idempotency Tests ---
+
+  - id: tenant-dedup
+    name: "Duplicate message_id is rejected by tenant"
+    description: "If hub retries a message, the tenant dedup layer prevents double-processing"
+    given:
+      - tenant has already processed msg_abc123
+    when:
+      - POST /lumina-relay/inbound with message_id=msg_abc123 (duplicate)
+    then:
+      - HTTP 200 returned with status=duplicate
+      - no new agent session created
+    assertions:
+      - type: http_status
+        value: 200
+      - type: response_field
+        field: status
+        value: "duplicate"
+
+  # --- Rate Limiting Tests ---
+
+  - id: tenant-rate-limit
+    name: "Tenant inbound rate limit enforced"
+    given:
+      - tenant has received 100 messages in the last minute
+    when:
+      - POST /lumina-relay/inbound with message 101
+    then:
+      - HTTP 429 returned
+    assertions:
+      - type: http_status
+        value: 429

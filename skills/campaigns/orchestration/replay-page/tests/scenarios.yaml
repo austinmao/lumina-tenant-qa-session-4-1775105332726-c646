@@ -1,0 +1,44 @@
+meta:
+  skill: replay-page
+  path: skills/campaigns/orchestration/replay-page
+  trigger: /replay-page
+  version: "1.0.0"
+  description: Validates replay page generation from Zoom recording config
+
+scenarios:
+- name: replay-build-with-transcript
+  description: Build replay page when transcript and summary are available in config
+  steps:
+    - type: invoke
+      invoke: /replay-page Build replay page for slug have-a-good-trip with transcript available
+  assertions:
+    - type: file_exists
+      path: web/src/app/replay/have-a-good-trip/page.tsx
+    - type: file_contains
+      path: web/src/app/replay/have-a-good-trip/page.tsx
+      value: "Key Takeaways"
+
+- name: replay-build-without-transcript
+  description: Build replay page when no transcript is available — page renders without takeaways section
+  steps:
+    - type: invoke
+      invoke: /replay-page Build replay page for slug test-no-transcript (no transcript in config)
+  assertions:
+    - type: file_exists
+      path: web/src/app/replay/test-no-transcript/page.tsx
+    - type: file_not_contains
+      path: web/src/app/replay/test-no-transcript/page.tsx
+      value: "Key Takeaways"
+
+- name: replay-expired-returns-410
+  description: When expiresAt is in the past, page should show expired state
+  preconditions:
+    replay_config:
+      expiresAt: "2020-01-01T00:00:00Z"
+      status: "active"
+  steps:
+    - type: invoke
+      invoke: /replay-page Build replay page with expired config
+  assertions:
+    - type: output_contains
+      value: "expired"

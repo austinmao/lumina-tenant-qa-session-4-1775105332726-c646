@@ -1,0 +1,116 @@
+scenarios:
+  - name: campaign-phase2-parallel-smoke
+    description: >
+      Campaign Phase 2 via Agent Squad sidecar — verify 3+ agents dispatched
+      concurrently, all artifacts produced and pass contract verification,
+      no prohibited words in any output.
+    preconditions:
+      - file_exists: "services/agent-squad/app.py"
+      - file_exists: "services/agent-squad/requirements.txt"
+      - service_running: "http://localhost:18790/health"
+    invoke:
+      agent: main
+      message: |
+        Run campaign Phase 2 for a test campaign slug 'parallel-smoke-test'.
+        Use the coordinate skill to dispatch Quill (landing page copy),
+        Quill (email copy), and Forge (email HTML) concurrently.
+        Pipeline dir: memory/pipelines/campaign-2026-03-16-parallel-smoke-test/
+        After dispatch, report: number of agents dispatched, status of each,
+        and whether all contract assertions passed.
+    assertions:
+      # Sidecar must be called
+      - type: output_contains
+        value: "http://localhost:18790/coordinate"
+        description: "Coordinate endpoint called"
+      # Three agents dispatched concurrently
+      - type: output_contains
+        value: "agents-marketing-copywriter"
+        description: "Quill dispatched"
+      - type: output_contains
+        value: "agents-marketing-email-engineer"
+        description: "Forge dispatched"
+      # Unique artifact paths
+      - type: output_contains
+        value: "lp-copy.md"
+        description: "Landing page copy artifact path used"
+      - type: output_contains
+        value: "email-copy.md"
+        description: "Email copy artifact path used"
+      - type: output_contains
+        value: "email.html"
+        description: "Email HTML artifact path used"
+      # Assertions passed
+      - type: output_contains
+        value: "assertions passed"
+        description: "Contract assertions ran and passed"
+      # No prohibited words leaked
+      - type: artifact_not_contains
+        path: "memory/pipelines/campaign-2026-03-16-parallel-smoke-test/lp-copy.md"
+        value: "Sacred"
+        description: "Prohibited word 'Sacred' absent from landing page copy"
+      - type: artifact_not_contains
+        path: "memory/pipelines/campaign-2026-03-16-parallel-smoke-test/email-copy.md"
+        value: "Miracle"
+        description: "Prohibited word 'Miracle' absent from email copy"
+
+  - name: campaign-phase2-serial-fallback
+    description: >
+      With the Agent Squad sidecar stopped, campaign Phase 2 falls back to serial
+      sessions_spawn. All artifacts must still be produced and pass contract
+      verification — the pipeline must not block or error on sidecar unavailability.
+    preconditions:
+      - file_exists: "services/agent-squad/app.py"
+      # Note: sidecar must be stopped before running this scenario
+      - service_unavailable: "http://localhost:18790/health"
+    invoke:
+      agent: main
+      message: |
+        The Agent Squad sidecar is offline.
+        Run campaign Phase 2 for test slug 'serial-fallback-test' using serial fallback.
+        Pipeline dir: memory/pipelines/campaign-2026-03-16-serial-fallback-test/
+        Confirm: (1) fallback mode triggered, (2) agents ran serially, (3) all artifacts produced.
+    assertions:
+      - type: output_contains
+        value: "fallback"
+        description: "Serial fallback triggered"
+      - type: output_contains
+        value: "sessions_spawn"
+        description: "Serial sessions_spawn used"
+      - type: output_contains
+        value: "agents-marketing-copywriter"
+        description: "Quill invoked serially"
+      - type: output_contains
+        value: "agents-marketing-email-engineer"
+        description: "Forge invoked serially"
+      - type: output_contains
+        value: "assertions passed"
+        description: "Contract assertions still run and passed in serial mode"
+
+  - name: campaign-phase2-partial-failure-preserved
+    description: >
+      If one agent fails during parallel execution, the other agents' completed
+      artifacts are preserved and reported — not discarded.
+    preconditions:
+      - file_exists: "services/agent-squad/app.py"
+      - service_running: "http://localhost:18790/health"
+    invoke:
+      agent: main
+      message: |
+        Run a campaign Phase 2 parallel dispatch where the email HTML agent (Forge)
+        is given an invalid contract path to simulate a failure.
+        Verify: Quill's landing page copy and email copy artifacts are preserved,
+        Forge's failure is reported, and the pipeline does NOT discard Quill's work.
+        Pipeline dir: memory/pipelines/campaign-2026-03-16-partial-failure-test/
+    assertions:
+      - type: output_contains
+        value: "partial_success"
+        description: "Partial success mode indicated in response"
+      - type: output_contains
+        value: "succeeded"
+        description: "Succeeded count reported"
+      - type: output_contains
+        value: "failed"
+        description: "Failed count reported"
+      - type: output_contains
+        value: "preserved"
+        description: "Successful artifacts explicitly noted as preserved"

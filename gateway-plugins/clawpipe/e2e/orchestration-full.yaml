@@ -1,0 +1,112 @@
+pipeline:
+  name: website-orchestration-full-e2e
+  version: "3.0"
+  description: "Full orchestration E2E testing v0.1.0 + v0.2.0 + v0.3.0 features"
+
+defaults:
+  timeout: 30
+  max_retries: 1
+  backoff: none
+  reasoning_mode: standard
+
+# v0.3.0: Goal registry
+goals:
+  - name: quality-target
+    description: "Pipeline quality must exceed 0.7"
+    metric_ref: "quality_score.composite"
+    target: ">= 0.7"
+    alert_threshold: 0.6
+    evaluation_frequency: per_run
+  - name: all-stages-complete
+    description: "Every stage must finish"
+    metric_ref: "quality_score.completeness"
+    target: ">= 1.0"
+  - name: zero-retries
+    description: "No retries needed"
+    metric_ref: "quality_score.cost"
+    target: ">= 0.9"
+
+# v0.3.0: Guardrails (pre-run safety)
+guardrails:
+  - name: stage-count-limit
+    check: "stage_count <= 100"
+    on_fail: block
+    description: "Pipeline must not exceed 100 stages"
+    severity: critical
+    scope: pre_run
+
+# v0.2.0: Quality scoring
+quality:
+  weights:
+    confidence: 0.25
+    cost: 0.15
+    completeness: 0.25
+    feedback: 0.20
+    speed: 0.15
+  regression_threshold: 0.2
+  baseline_window: 5
+
+stages:
+  # ── Phase 1: Discovery (v0.1.0 basic execution + v0.2.0 model routing) ──
+  - name: brand-extract
+    command: echo "brand_name=AcmeCo primary_color=#14B8A6 font=Inter"
+    reasoning_mode: simple
+
+  - name: research-audience
+    command: echo "audience=wellness-seekers age=28-45 intent=retreat-discovery"
+    depends_on:
+      - brand-extract
+    reasoning_mode: simple
+
+  # ── Phase 2: Architecture (v0.2.0 DAG parallel — both depend on Phase 1) ──
+  - name: generate-sitemap
+    command: echo "pages=home,about,retreats,contact,blog url_count=5"
+    depends_on:
+      - brand-extract
+      - research-audience
+    reasoning_mode: standard
+
+  - name: design-tokens
+    command: echo "tokens=color,spacing,typography,radius,shadow token_count=24"
+    depends_on:
+      - brand-extract
+    reasoning_mode: simple
+
+  # ── Phase 3: Content (v0.2.0 reflection loop with rubric) ──
+  - name: generate-copy
+    command: 'echo "subject-line: 0.9 brand-voice: 0.85 cta-clarity: 0.8 structure: 0.7 personalization: 0.75"'
+    type: reflection
+    depends_on:
+      - generate-sitemap
+      - research-audience
+    reflection:
+      rubric_path: /Users/luminamao/Documents/Github/openclaw/rubrics/email-content.yaml
+      max_iterations: 2
+      reviewer_isolation: fresh
+    reasoning_mode: extended
+
+  # ── Phase 4: Build (v0.2.0 model routing — extended for complex task) ──
+  - name: build-html
+    command: echo "pages_built=5 components=nav,hero,footer,card,cta html_valid=true"
+    depends_on:
+      - generate-copy
+      - design-tokens
+    reasoning_mode: extended
+
+  # ── Phase 5: QA (v0.1.0 output contract — validates build output) ──
+  - name: qa-validate
+    command: echo "accessibility=AA performance=92 seo_score=87 links_valid=true"
+    depends_on:
+      - build-html
+    reasoning_mode: standard
+
+  # ── Phase 6: Deploy ──
+  - name: deploy
+    command: echo "deployed_url=https://staging.example-org.com status=live"
+    depends_on:
+      - qa-validate
+    reasoning_mode: simple
+
+paths:
+  base: /tmp/clawpipe-e2e-orchestration/${pipeline_id}
+  artifacts: ${base}/artifacts

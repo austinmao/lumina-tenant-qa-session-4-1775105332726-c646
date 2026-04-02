@@ -1,0 +1,91 @@
+version: "1.0"
+
+pipeline:
+  name: webinar-orchestrator
+  skill_path: skills/webinar-orchestrator
+  trigger: /webinar-orchestrator
+  stages: 8
+  estimated_duration: "30-60m"
+
+stages:
+  - name: discovery-brief
+    agent: agents-marketing-webinar
+    produces: memory/drafts/webinars/{{today}}-*-brief.md
+    handoff_contract: tests/handoffs/orchestrator-to-prism.yaml
+
+  - name: outline-approval
+    agent: agents-marketing-webinar
+    produces: memory/drafts/webinars/{{today}}-*-outline.md
+    requires_approval: true
+
+  - name: slide-copy
+    agent: agents-marketing-copywriter
+    produces: memory/drafts/webinars/{{today}}-*-copy.md
+    handoff_contract: tests/handoffs/prism-to-quill.yaml
+
+  - name: brand-review
+    agent: agents-marketing-brand
+    produces: memory/drafts/webinars/{{today}}-*-copy.md
+    handoff_contract: tests/handoffs/quill-to-brand.yaml
+
+  - name: design-spec
+    agent: agents-frontend-designer
+    produces: memory/drafts/webinars/{{today}}-*-design-spec.md
+    handoff_contract: tests/handoffs/brand-to-canvas.yaml
+
+  - name: html-build
+    agent: agents-frontend-engineer
+    produces: "{{home_dir}}/webinars/{{today}}-*.html"
+    handoff_contract: tests/handoffs/canvas-to-nova.yaml
+
+  - name: qa-tdd
+    agent: openclaw-tdd-engineer
+    produces: memory/drafts/webinars/{{today}}-*-tdd-complete.md
+    handoff_contract: tests/handoffs/nova-to-qa.yaml
+
+  - name: campaign-registration
+    agent: skills-webinar-orchestrator
+    produces: memory/logs/api-submits/{{today}}.md
+
+final_assertions:
+  deterministic:
+    - type: artifact_exists
+      path: memory/drafts/webinars/{{today}}-*-brief.md
+    - type: artifact_exists
+      path: memory/drafts/webinars/{{today}}-*-outline.md
+    - type: artifact_exists
+      path: memory/drafts/webinars/{{today}}-*-copy.md
+    - type: artifact_exists
+      path: memory/drafts/webinars/{{today}}-*-design-spec.md
+    - type: artifact_exists
+      path: "{{home_dir}}/webinars/{{today}}-*.html"
+    - type: artifact_exists
+      path: memory/drafts/webinars/{{today}}-*-tdd-complete.md
+    - type: log_entry
+      path: memory/logs/api-submits/{{today}}.md
+      pattern: "Stage 9: Campaign \".*\" (registered|already existed)"
+    - type: artifact_absent_words
+      path: memory/drafts/webinars/{{today}}-*-copy.md
+      words:
+        - Limited spots available!
+        - Act now!
+        - Don't miss out!
+        - We're thrilled to announce
+        - Sacred
+
+  semantic:
+    - type: llm_judge
+      path: memory/drafts/webinars/{{today}}-*-copy.md
+      rubric: |
+        Score 1-5. The webinar copy should follow the brand's science-translator
+        register, preserve a single connection-call CTA, and avoid hype or
+        artificial urgency.
+      pass_threshold: 3
+
+pipeline_health:
+  - description: "All artifact-producing stages completed."
+    check: count(produced_artifacts) == count(stages_with_produces)
+  - description: "Every recorded handoff contract passed."
+    check: all handoff contracts passed
+  - description: "Pipeline stays inside the documented execution window."
+    check: elapsed <= 90m

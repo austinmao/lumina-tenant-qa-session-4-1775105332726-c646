@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/campaigns/strategy/form-cro
+  trigger: /form-cro
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: form-cro-smoke
+  description: Optimize a registration form for higher completion rate.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /form-cro Optimize the retreat application form for higher completion
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/form-cro-recommendations.md
+    timeout: 60
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/form-cro-recommendations.md
+    sections:
+    - form
+    - completion
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: form-cro-edge-multi-step
+  description: Multi-step form analysis covers progress indicators and field validation.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /form-cro Audit the 4-step quiz funnel for drop-off between steps
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/form-cro-recommendations.md
+    sections:
+    - step
+    - drop-off
+  - type: no_span_errors

@@ -1,0 +1,49 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/creative/brand/review-gate
+  trigger: /brand-review-gate
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: brand-review-gate-smoke
+  description: Invoking brand-review-gate on compliant copy produces a pass verdict
+    with archetype and pillar declarations.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /brand-review-gate review this draft email copy for brand compliance
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/brand-review-gate-result.md
+    timeout: 60
+  - type: artifact_contains
+    path: memory/reports/brand-review-gate-result.md
+    sections:
+    - Voice Archetype
+    - Brand Pillar
+    - Kill List
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: brand-review-gate-kill-list-violation
+  description: Copy containing kill-list words is flagged as must-fix.
+  tags:
+  - negative
+  - p0
+  when:
+    invoke: /brand-review-gate "Join our sacred therapeutic journey to a miraculous
+      healing experience"
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/brand-review-gate-result.md
+    sections:
+    - must-fix
+    - Kill List
+  - type: no_span_errors

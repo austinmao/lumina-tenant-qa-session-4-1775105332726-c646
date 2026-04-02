@@ -1,0 +1,51 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/content/voice/transformation-story
+  trigger: /transformation-story
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: transformation-story-smoke
+  description: Invoking transformation-story produces a five-stage narrative arc with
+    Before State, Threshold, Interior Journey, After, and Universal Meaning.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /transformation-story structure testimonial from retreat participant about
+      relationship healing
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/transformation-story-draft.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/drafts/transformation-story-draft.md
+    sections:
+    - Before State
+    - Threshold
+    - After
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: transformation-story-rejects-generic-before
+  description: A before-state that could belong to any generic wellness testimonial
+    is flagged for revision.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /transformation-story write testimonial with generic before-state "She
+      was stressed and unhappy"
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/transformation-story-draft.md
+    sections:
+    - specific
+  - type: no_span_errors

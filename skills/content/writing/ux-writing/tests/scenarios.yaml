@@ -1,0 +1,46 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/content/writing/ux-writing
+  trigger: /ux-writing
+defaults:
+  timeout: 60
+  test_mode: true
+scenarios:
+- name: ux-writing-smoke
+  description: Invoking ux-writing produces microcopy with form labels, error messages,
+    and empty states.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /ux-writing write microcopy for retreat application form
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/drafts/ux-writing-output.md
+    timeout: 60
+  - type: artifact_contains
+    path: memory/drafts/ux-writing-output.md
+    sections:
+    - Label
+    - Error
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: ux-writing-empty-state
+  description: Empty state messages include a clear next action and encouraging tone.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /ux-writing write empty state for search results with no matches
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/drafts/ux-writing-output.md
+    sections:
+    - empty
+  - type: no_span_errors

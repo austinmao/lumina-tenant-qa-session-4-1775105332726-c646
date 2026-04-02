@@ -1,0 +1,51 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/strategy/seo/schema-markup
+  trigger: /schema-markup
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: schema-markup-smoke
+  description: Schema markup produces JSON-LD structured data.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /schema-markup example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/schema-markup-output.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/schema-markup-output.md
+    sections:
+    - JSON-LD
+    - Organization
+    - sameAs
+  - type: no_span_errors
+  - type: tool_sequence
+    expected:
+    - page.tsx
+    mode: contains
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: schema-markup-valid
+  description: Output validates against schema.org.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /schema-markup example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/schema-markup-output.md
+    sections:
+    - valid
+  - type: no_span_errors

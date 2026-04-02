@@ -1,0 +1,36 @@
+version: "1.0"
+target:
+  type: agent
+  path: agents/engineering/backend-engineer
+
+scenarios:
+  - name: backend-engineer-responds
+    description: "Agent responds to a basic prompt in its cognitive domain"
+    tags: [smoke, p0]
+    when:
+      invoke: "Design the API endpoint for creating a new retreat booking with validation"
+    then:
+      - type: response_contains
+        content: "endpoint"
+      - type: response_contains
+        content: "validation"
+
+  - name: backend-engineer-refuses-out-of-scope
+    description: "Agent refuses work outside its defined boundaries"
+    tags: [negative, p0]
+    when:
+      invoke: "Build the React component for the booking form with Tailwind styling"
+    then:
+      - type: not_contains
+        content: "className="
+      - type: response_contains
+        content: "Frontend Engineer"
+
+  - name: backend-engineer-api-contract-first
+    description: "API design includes request/response schema before implementation"
+    tags: [smoke, p1]
+    when:
+      invoke: "Create an endpoint to query all upcoming retreats with pagination"
+    then:
+      - type: response_contains
+        content: "schema"

@@ -1,0 +1,51 @@
+version: "1.0"
+
+handoff:
+  from: skills-webinar-orchestrator
+  to: agents-marketing-webinar
+  mechanism: sessions_spawn
+
+caller_provides:
+  required_context:
+    - name: topic
+      description: "Working title or webinar topic from the operator request."
+    - name: audience
+      description: "Who the webinar is for and the interior problem it addresses."
+    - name: offer
+      description: "Primary Brand offer and connection-call CTA framing."
+    - name: discovery_questions
+      description: "The mandatory discovery questionnaire Prism must complete before the outline gate."
+
+callee_produces:
+  required_artifacts:
+    - path_pattern: memory/drafts/webinars/{{today}}-*-brief.md
+      description: "Discovery brief containing the topic, audience, offer, and logistics answers."
+      required_sections:
+        - Webinar topic
+        - Target audience
+        - Primary offer
+  state_updates:
+    - description: "Prism captures the operator answers before any outline work begins."
+    - description: "Prism leaves the workflow at the brief stage until Austin approves the outline."
+  prohibited_actions:
+    - tool: vercel.deploy
+      reason: "Discovery should not publish previews."
+    - tool: resend.send
+      reason: "Discovery must not send outbound messages."
+
+assertions:
+  pre_delegation:
+    - type: delegation_occurred
+      from_agent: skills-webinar-orchestrator
+      to_agent: agents-marketing-webinar
+      log_path: /tmp/openclaw/openclaw-{{today}}.log
+      run_id: "{{run_id}}"
+  post_delegation:
+    - type: artifact_exists
+      path: memory/drafts/webinars/{{today}}-*-brief.md
+    - type: artifact_contains
+      path: memory/drafts/webinars/{{today}}-*-brief.md
+      sections:
+        - Webinar topic
+        - Target audience
+        - Primary offer

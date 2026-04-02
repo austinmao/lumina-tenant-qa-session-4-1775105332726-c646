@@ -1,0 +1,50 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/audit/visual-qa
+  trigger: /visual-qa
+defaults:
+  timeout: 120
+  test_mode: true
+scenarios:
+- name: visual-qa-smoke
+  description: Smoke QA on a page produces a report with scores at all three breakpoints.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /visual-qa https://example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/visual-qa-report.md
+    timeout: 120
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/visual-qa-report.md
+    sections:
+    - Mobile (375px)
+    - Tablet (768px)
+    - Desktop (1440px)
+    - Overall Score
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: visual-qa-single-breakpoint
+  description: When a single breakpoint is specified, only that breakpoint is tested
+    and noted in the report.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /visual-qa https://example.org --breakpoint mobile
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/visual-qa-report.md
+    sections:
+    - Mobile (375px)
+    - Breakpoints tested
+  - type: no_span_errors

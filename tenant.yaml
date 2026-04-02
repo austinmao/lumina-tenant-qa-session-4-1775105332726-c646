@@ -1,0 +1,40 @@
+# Lumina Tenant Configuration
+# Replace all <PLACEHOLDER> values before deploying.
+name: <TENANT_NAME>
+bot_name: "<BOT_NAME>"
+site_id: <SITE_ID>
+domain: <DOMAIN>
+brand_root: brands/<TENANT_NAME>/
+operator:
+  name: <OPERATOR_NAME>
+  timezone: America/Denver
+  contact: slack:#lumina-bot
+  org: <ORG_NAME>
+template_version: v1.0.0
+template_remote: https://github.com/<github-org>/lumina-tenant-template
+compatibility:
+  gateway_version: "2026.3.13"
+  required_soul_sections:
+    - Who I Am
+    - Core Principles
+    - Boundaries
+    - Communication Style
+    - Security Rules
+    - Memory
+  skill_frontmatter_required:
+    - name
+    - description
+    - permissions
+config_policy:
+  owned_key_prefixes:
+    - agents.
+    - skills.
+  collision_mode: defer
+cognition_registry:
+  low/economy/low:
+    model: gemini-2.5-flash-lite
+  medium/standard/low:
+    model: claude-sonnet-4-6
+    fallback: deepseek/deepseek-v3
+  high/premium/critical:
+    model: claude-opus-4-6

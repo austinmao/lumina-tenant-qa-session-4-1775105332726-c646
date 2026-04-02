@@ -1,0 +1,47 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/quality/audit/performance-audit
+  trigger: /performance-audit
+defaults:
+  timeout: 90
+  test_mode: true
+scenarios:
+- name: performance-audit-smoke
+  description: Performance audit checks Core Web Vitals with baselines.
+  tags:
+  - smoke
+  - p0
+  when:
+    invoke: /performance-audit example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_exists
+    path: memory/reports/performance-audit-report.md
+    timeout: 90
+    updated_after: '{{run_started_at}}'
+  - type: artifact_contains
+    path: memory/reports/performance-audit-report.md
+    sections:
+    - LCP
+    - CLS
+    - Core Web Vitals
+  - type: no_span_errors
+  - type: tool_not_invoked
+    tool: shell.execute
+- name: performance-audit-regression
+  description: Regression from baseline triggers alert.
+  tags:
+  - edge
+  - p1
+  when:
+    invoke: /performance-audit example.org
+    params:
+      test_mode: true
+  then:
+  - type: artifact_contains
+    path: memory/reports/performance-audit-report.md
+    sections:
+    - regression
+  - type: no_span_errors

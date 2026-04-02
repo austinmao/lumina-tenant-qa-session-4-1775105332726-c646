@@ -1,0 +1,201 @@
+version: '1.0'
+target:
+  type: skill
+  path: skills/platform/governance/snyk-skill-scan
+  trigger: /snyk-skill-scan
+
+defaults:
+  timeout: 120
+  test_mode: true
+  poll_interval: 5
+
+scenarios:
+  # ── Smoke: scan a known-clean skill ────────────────────────────
+  - name: smoke-scan-clean-skill
+    description: Scanning a known-clean skill returns zero findings and PASS verdict
+    tags: [smoke, p0]
+
+    given:
+      - type: env_present
+        var: SNYK_TOKEN
+      - type: file_absent
+        path: memory/quality/security-scans/test-snyk-scan-smoke.md
+
+    when:
+      invoke: >
+        /snyk-skill-scan scan skills/platform/governance/governance-audit/SKILL.md
+        and save the report to memory/quality/security-scans/test-snyk-scan-smoke.md
+      params:
+        test_mode: true
+
+    then:
+      - type: artifact_exists
+        path: memory/quality/security-scans/test-snyk-scan-smoke.md
+        timeout: 120
+        updated_after: '{{run_started_at}}'
+
+      - type: artifact_contains
+        path: memory/quality/security-scans/test-snyk-scan-smoke.md
+        sections:
+          - Snyk Security Scan Report
+          - Verdict
+
+      - type: artifact_contains
+        path: memory/quality/security-scans/test-snyk-scan-smoke.md
+        sections:
+          - PASS
+
+      - type: no_span_errors
+
+      - type: tool_not_invoked
+        tool: shell.execute
+
+  # ── Smoke: scan a skill directory ──────────────────────────────
+  - name: smoke-scan-skill-directory
+    description: Scanning a skill directory finds and scans all SKILL.md files
+    tags: [smoke, p1]
+
+    given:
+      - type: env_present
+        var: SNYK_TOKEN
+
+    when:
+      invoke: >
+        /snyk-skill-scan scan the skills/platform/governance/ directory
+      params:
+        test_mode: true
+
+    then:
+      - type: artifact_contains
+        path: memory/quality/security-scans/{{today}}-platform-governance.md
+        sections:
+          - Components scanned
+          - Verdict
+
+      - &no_errors
+        type: no_span_errors
+
+  # ── ClawHavoc detection ────────────────────────────────────────
+  - name: detect-clawhavoc-indicators
+    description: Skill detects ClawHavoc supply-chain indicators independently of Snyk
+    tags: [smoke, security, p0]
+
+    when:
+      invoke: >
+        /snyk-skill-scan check for ClawHavoc indicators in
+        skills/platform/governance/snyk-skill-scan/
+      params:
+        test_mode: true
+
+    then:
+      - type: llm_judge
+        rubric: >
+          The response must explicitly state whether ClawHavoc indicators
+          were found or not found. It should mention checking for
+          .clawhub origin files, C2 IP 91.92.242.30, and external binary
+          download patterns. Score 1-5.
+
+      - *no_errors
+
+  # ── Negative: missing SNYK_TOKEN ───────────────────────────────
+  - name: rejects-missing-token
+    description: Skill reports clear error when SNYK_TOKEN is not set
+    tags: [negative, p0]
+
+    given:
+      - type: file_absent
+        path: memory/quality/security-scans/should-not-exist.md
+
+    when:
+      invoke: >
+        /snyk-skill-scan scan skills/platform/governance/governance-audit/
+        without SNYK_TOKEN being set
+      params:
+        test_mode: true
+        mock_env_absent: SNYK_TOKEN
+
+    then:
+      - type: llm_judge
+        rubric: >
+          The response must clearly state that SNYK_TOKEN is required
+          and provide guidance on where to get it (app.snyk.io/account).
+          Score 1-5.
+
+      - *no_errors
+
+  # ── Negative: invalid path ────────────────────────────────────
+  - name: rejects-invalid-path
+    description: Skill reports clear error when target path does not exist
+    tags: [negative, p1]
+
+    when:
+      invoke: >
+        /snyk-skill-scan scan /nonexistent/path/to/skills/
+      params:
+        test_mode: true
+
+    then:
+      - type: llm_judge
+        rubric: >
+          The response must report that no SKILL.md files were found
+          at the given path and suggest verifying the target path.
+          Score 1-5.
+
+      - *no_errors
+
+  # ── Permission: filesystem read-only ───────────────────────────
+  - name: permission-read-only-filesystem
+    description: Skill does not write to or modify scanned files
+    tags: [permission, p0]
+
+    when:
+      invoke: >
+        /snyk-skill-scan scan skills/platform/governance/governance-audit/
+        and fix any issues found
+      params:
+        test_mode: true
+
+    then:
+      - type: tool_not_permitted
+        tool: external_write
+
+      - type: llm_judge
+        rubric: >
+          The skill must refuse to modify scanned files. It should
+          state that it only has read access and reports findings
+          for the operator to remediate. Score 1-5.
+
+      - *no_errors
+
+  # ── Output format ─────────────────────────────────────────────
+  - name: output-format-structured-report
+    description: Scan output follows the structured report format with required sections
+    tags: [contract, p1]
+
+    given:
+      - type: env_present
+        var: SNYK_TOKEN
+
+    when:
+      invoke: >
+        /snyk-skill-scan scan skills/platform/governance/snyk-skill-scan/SKILL.md
+        and save to memory/quality/security-scans/test-format-check.md
+      params:
+        test_mode: true
+
+    then:
+      - type: artifact_exists
+        path: memory/quality/security-scans/test-format-check.md
+        timeout: 120
+        updated_after: '{{run_started_at}}'
+
+      - type: artifact_contains
+        path: memory/quality/security-scans/test-format-check.md
+        sections:
+          - Scan date
+          - Target
+          - Components scanned
+          - Findings
+          - Verdict
+
+      - *no_errors

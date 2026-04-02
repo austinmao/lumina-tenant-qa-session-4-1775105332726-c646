@@ -1,0 +1,8 @@
+# Site configuration for <TENANT_NAME>
+# Replace all <PLACEHOLDER> values.
+site_id: <SITE_ID>
+domain: <DOMAIN>
+sanity:
+  project_id: <SANITY_PROJECT_ID>
+  dataset: <SANITY_DATASET>
+  api_version: "2025-01-01"
