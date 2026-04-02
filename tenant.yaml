@@ -1,17 +1,15 @@
-# Lumina Tenant Configuration
-# Replace all <PLACEHOLDER> values before deploying.
-name: <TENANT_NAME>
-bot_name: "<BOT_NAME>"
-site_id: <SITE_ID>
-domain: <DOMAIN>
-brand_root: brands/<TENANT_NAME>/
+name: qa-session-4-1775105332726-c646
+bot_name: "Lumina"
+site_id: qa-session-4-1775105332726-c646
+domain: qa-s4-05332726.example.com
+brand_root: brands/qa-session-4-1775105332726-c646/
 operator:
-  name: <OPERATOR_NAME>
+  name: QA Session 4 1775105332726
   timezone: America/Denver
   contact: slack:#lumina-bot
-  org: <ORG_NAME>
+  org: QA Session 4 1775105332726
 template_version: v1.0.0
-template_remote: https://github.com/<github-org>/lumina-tenant-template
+template_remote: https://github.com/austinmao/lumina-tenant-template
 compatibility:
   gateway_version: "2026.3.13"
   required_soul_sections:
